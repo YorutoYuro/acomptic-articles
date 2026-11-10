@@ -9,8 +9,11 @@ export async function getStaticPaths() {
   return Object.entries(authorsData).map(([username, profile]) => {
     const authorArticles = allArticles
       .filter((art) => {
-        const artAuthor = (art.data.author || "").toLowerCase().trim();
-        return artAuthor === username.toLowerCase();
+        const artAuthor = (art.data.author || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        const targetUsername = username.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const targetName = (profile.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+        
+        return artAuthor === targetUsername || artAuthor === targetName;
       })
       .map((art) => {
         const normalizedId = art.id.replace(/\\/g, "/");
@@ -61,26 +64,26 @@ const formatDate = (date: string) =>
           )}
         </div>
         <div class="author-info">
-          <div class="author-title-row">
+          <div class="author-title-block">
             <h1>{profile.name}</h1>
             <span class="author-handle">@{username}</span>
           </div>
           <p class="author-desc">{profile.description}</p>
 
-          <!-- INSTAGRAM, LINKEDIN & X SOCIAL LINKS -->
+          <!-- INSTAGRAM, LINKEDIN & X SOCIAL LINKS (Same Tab) -->
           <div class="author-socials">
             {profile.instagram && (
-              <a href={profile.instagram} target="_blank" rel="noopener noreferrer" class="social-link">
+              <a href={profile.instagram} class="social-link">
                 Instagram
               </a>
             )}
             {profile.linkedin && (
-              <a href={profile.linkedin} target="_blank" rel="noopener noreferrer" class="social-link">
+              <a href={profile.linkedin} class="social-link">
                 LinkedIn
               </a>
             )}
             {profile.x && (
-              <a href={profile.x} target="_blank" rel="noopener noreferrer" class="social-link">
+              <a href={profile.x} class="social-link">
                 X (Twitter)
               </a>
             )}
@@ -167,27 +170,24 @@ const formatDate = (date: string) =>
     place-items: center;
   }
 
-  .author-title-row {
-    display: flex;
-    align-items: baseline;
-    gap: 12px;
-  }
-
-  .author-title-row h1 {
+  .author-title-block h1 {
     margin: 0;
     font-size: 2.1rem;
     font-weight: 700;
     letter-spacing: -.03em;
+    line-height: 1.2;
   }
 
   .author-handle {
+    display: block;
+    margin-top: 4px;
     color: var(--color-purple-muted, #625d6b);
-    font-size: 1rem;
+    font-size: 0.95rem;
     font-weight: 600;
   }
 
   .author-desc {
-    margin: 8px 0 16px;
+    margin: 12px 0 16px;
     color: var(--color-purple-muted, #625d6b);
     max-width: 680px;
     line-height: 1.65;
