@@ -96,7 +96,7 @@ const schema = [
     "@type": "CollectionPage",
     "@id": `${siteURL}/#webpage`,
     url: `${siteURL}/`,
-    name: "Acomptic - articles",
+    name: "Acomptic Articles",
     description:
       "Practical articles on GST, income tax and business insights for small businesses in India.",
     inLanguage: "en-IN",
@@ -524,7 +524,10 @@ const schema = [
     width: 100%;
   }
 
-  .feature-copy { max-width: 790px; }
+  .feature-copy {
+    width: 100%;
+    max-width: none;
+  }
 
   .feature-meta-top {
     display: flex;
@@ -549,7 +552,7 @@ const schema = [
   }
 
   .feature-copy h2 {
-    max-width: 760px;
+    max-width: none;
     margin: 0 0 16px;
     color: var(--color-ink, #121212);
     font-size: clamp(1.8rem, 3.1vw, 2.65rem);
@@ -560,7 +563,7 @@ const schema = [
   }
 
   .feature-excerpt {
-    max-width: 720px;
+    max-width: none;
     margin: 0;
     color: var(--color-purple-muted, #625d6b);
     font-size: clamp(.94rem, 1.3vw, 1.04rem);
@@ -568,6 +571,7 @@ const schema = [
   }
 
   .feature-bottom {
+    width: 100%;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
