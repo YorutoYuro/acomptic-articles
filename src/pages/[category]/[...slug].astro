@@ -3,16 +3,15 @@
 import { getCollection, render } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 
-// 1. Generate static paths for every article across all category folders
+const mainSiteURL = "https://acomptic.com";
+
 export async function getStaticPaths() {
   const articles = await getCollection('articles');
   
   return articles.map((article) => {
-    // Normalize path separators for cross-platform compatibility (Windows / Linux)
     const normalizedId = article.id.replace(/\\/g, '/');
     const parts = normalizedId.split('/');
     
-    // Extract folder name as category, and file name as slug
     const category = parts.length > 1 ? parts[0] : 'general';
     const rawSlug = parts.length > 1 ? parts.slice(1).join('/') : parts[0];
     const slug = rawSlug.replace(/\.mdx?$/, '');
@@ -24,49 +23,312 @@ export async function getStaticPaths() {
   });
 }
 
-// 2. Extract article props and render markdown content
 const { article } = Astro.props;
 const { Content } = await render(article);
 
-const categoryName = Astro.params.category;
-const formattedCategory = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
+const categorySlug = Astro.params.category;
+const formattedCategory = categorySlug === "gst" 
+  ? "GST" 
+  : categorySlug === "income-tax" 
+    ? "Income Tax" 
+    : categorySlug.charAt(0).toUpperCase() + categorySlug.slice(1);
+
+const formatDate = (date: string) =>
+  new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+const readTime = article.data.readTime || 4; // Default fallback read time if not specified in frontmatter
+const authorName = article.data.author || "Acomptic Team";
+
+// Structured data schema for individual article SEO
+const schema = [
+  {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    "headline": article.data.title,
+    "description": article.data.description || article.data.excerpt,
+    "datePublished": article.data.date,
+    "author": {
+      "@type": "Organization",
+      "name": authorName
+    },
+    "publisher": { "@id": `${mainSiteURL}/#organization` }
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Home", "item": `${mainSiteURL}/` },
+      { "@type": "ListItem", "position": 2, "name": "Articles", "item": "https://articles.acomptic.com/" },
+      { "@type": "ListItem", "position": 3, "name": article.data.title, "item": article.url }
+    ]
+  }
+];
 ---
 
-<Layout title={`${article.data.title} | Acomptic Articles`}>
-  <div style="background-color: #FAFAFA; min-height: 100vh; padding: 40px 0 80px 0;">
-    <main style="max-width: 760px; margin: 0 auto; padding: 0 24px; background: #ffffff; border: 1px solid #E5E7EB; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+<Layout
+  title={`${article.data.title} - Acomptic Articles`}
+  description={article.data.description || article.data.excerpt}
+  schema={schema}
+>
+  <main class="article-page">
+    <article class="article-container">
       
-      <!-- Article Breadcrumb & Category Bar -->
-      <nav style="padding-top: 32px; font-size: 13px; color: #6B7280; display: flex; align-items: center; gap: 8px;">
-        <a href="/" style="color: #6B7280; text-decoration: none;">Home</a>
-        <span>/</span>
-        <a href={`/${categoryName}`} style="color: #FC642D; text-decoration: none; font-weight: 500; text-transform: uppercase;">
-          {formattedCategory}
-        </a>
-      </nav>
-
-      <!-- Article Header -->
-      <header style="margin-top: 16px; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 1px solid #E5E7EB;">
-        <h1 style="font-size: 38px; font-weight: 700; line-height: 1.2; margin: 0 0 16px 0; color: #121212; letter-spacing: -0.01em;">
-          {article.data.title}
-        </h1>
+      <!-- Article Header Section -->
+      <header class="article-header">
+        <div class="article-eyebrow">{formattedCategory}</div>
+        <h1 class="article-title">{article.data.title}</h1>
+        {article.data.description && (
+          <p class="article-excerpt">{article.data.description}</p>
+        )}
         
-        <div style="display: flex; align-items: center; gap: 16px; font-size: 14px; color: #6B7280;">
-          <span>Published on {article.data.date}</span>
-          {article.data.description && (
-            <>
-              <span>•</span>
-              <span style="color: #4B5563;">{article.data.description}</span>
-            </>
-          )}
+        <div class="article-meta-bar">
+          <div class="meta-author">
+            <span class="author-label">By</span>
+            <span class="author-name">{authorName}</span>
+          </div>
+          <span class="meta-divider" aria-hidden="true">·</span>
+          <time datetime={article.data.date}>{formatDate(article.data.date)}</time>
+          <span class="meta-divider" aria-hidden="true">·</span>
+          <span>{readTime} min read</span>
         </div>
       </header>
 
-      <!-- Rendered Markdown Body -->
-      <article class="article-body" style="font-size: 17px; line-height: 1.75; color: #2D3748; padding-bottom: 48px;">
+      <!-- Article Body Content -->
+      <div class="article-content-body">
         <Content />
-      </article>
+      </div>
 
-    </main>
-  </div>
+      <!-- Footer Action CTA matching index style -->
+      <footer class="article-footer-cta">
+        <div class="cta-card">
+          <div>
+            <h2>Accounting made <span>simple.</span></h2>
+            <p>
+              Try Acomptic, the offline GST accounting software built for
+              small businesses in India.
+            </p>
+          </div>
+          <a class="articles-btn" href="https://acomptic.com/">
+            Try Acomptic
+          </a>
+        </div>
+      </footer>
+
+    </article>
+  </main>
 </Layout>
+
+<style>
+  .article-page {
+    background: var(--color-white, #fff);
+    color: var(--color-ink, #121212);
+    font-family: var(--font-primary);
+    line-height: 1.7;
+    padding: 56px 0 88px;
+    overflow-wrap: anywhere;
+  }
+
+  .article-page *,
+  .article-page *::before,
+  .article-page *::after {
+    box-sizing: border-box;
+  }
+
+  .article-container {
+    width: min(780px, calc(100% - 48px));
+    margin-inline: auto;
+  }
+
+  .article-header {
+    margin-bottom: 42px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--color-border, #e9e7ef);
+  }
+
+  .article-eyebrow {
+    margin: 0 0 14px;
+    color: var(--color-primary, #7654d6);
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+
+  .article-title {
+    margin: 0 0 20px;
+    color: var(--color-ink, #121212);
+    font-size: clamp(2.1rem, 4.2vw, 3.2rem);
+    font-weight: 650;
+    letter-spacing: -.048em;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+
+  .article-excerpt {
+    margin: 0 0 24px;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: clamp(1.05rem, 1.3vw, 1.18rem);
+    line-height: 1.7;
+  }
+
+  .article-meta-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .88rem;
+  }
+
+  .meta-author {
+    font-weight: 600;
+    color: var(--color-ink, #121212);
+  }
+
+  .author-label {
+    font-weight: 400;
+    color: var(--color-purple-muted, #625d6b);
+    margin-right: 3px;
+  }
+
+  /* Typography formatting for Markdown elements inside <Content /> */
+  .article-content-body {
+    font-size: 1.08rem;
+    color: var(--color-ink, #121212);
+  }
+
+  .article-content-body :global(h2) {
+    font-size: 1.8rem;
+    font-weight: 650;
+    letter-spacing: -.03em;
+    margin-top: 2.2em;
+    margin-bottom: 0.75em;
+    color: var(--color-ink, #121212);
+  }
+
+  .article-content-body :global(h3) {
+    font-size: 1.35rem;
+    font-weight: 650;
+    letter-spacing: -.025em;
+    margin-top: 1.8em;
+    margin-bottom: 0.6em;
+    color: var(--color-ink, #121212);
+  }
+
+  .article-content-body :global(p) {
+    margin-top: 0;
+    margin-bottom: 1.5em;
+    line-height: 1.75;
+    color: var(--color-purple-muted, #625d6b);
+  }
+
+  .article-content-body :global(ul), 
+  .article-content-body :global(ol) {
+    margin-top: 0;
+    margin-bottom: 1.5em;
+    padding-left: 1.5em;
+    color: var(--color-purple-muted, #625d6b);
+  }
+
+  .article-content-body :global(li) {
+    margin-bottom: 0.5em;
+    line-height: 1.6;
+  }
+
+  .article-content-body :global(strong) {
+    color: var(--color-ink, #121212);
+    font-weight: 650;
+  }
+
+  .article-content-body :global(blockquote) {
+    margin: 2em 0;
+    padding: 1em 1.25em;
+    border-left: 3px solid var(--color-primary, #7654d6);
+    background: var(--color-surface-soft, #faf9fc);
+    border-radius: 0 8px 8px 0;
+  }
+
+  .article-content-body :global(blockquote p:last-child) {
+    margin-bottom: 0;
+  }
+
+  /* Bottom CTA matching index page card */
+  .article-footer-cta {
+    margin-top: 64px;
+    padding-top: 48px;
+    border-top: 1px solid var(--color-border, #e9e7ef);
+  }
+
+  .cta-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px 40px;
+    padding: clamp(28px, 4vw, 48px);
+    border: 1px solid var(--color-purple-border, #e5dcff);
+    border-radius: 18px;
+    background: var(--color-surface-soft, #faf9fc);
+    box-shadow: 0 4px 18px rgb(36 25 72 / 4%);
+  }
+
+  .cta-card h2 {
+    margin: 0;
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    font-weight: 700;
+    letter-spacing: -.045em;
+    line-height: 1.15;
+    color: var(--color-ink, #121212);
+  }
+
+  .cta-card h2 span {
+    color: var(--color-primary, #7654d6);
+  }
+
+  .cta-card p {
+    max-width: 520px;
+    margin: 10px 0 0;
+    color: var(--color-purple-muted, #625d6b);
+  }
+
+  .articles-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 12px 25px;
+    border: 1px solid var(--color-primary, #7654d6);
+    border-radius: 999px;
+    background: var(--color-primary, #7654d6);
+    color: var(--color-white, #fff);
+    font: inherit;
+    font-size: .96rem;
+    font-weight: 650;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  }
+
+  .articles-btn:hover,
+  .articles-btn:focus-visible {
+    border-color: var(--color-primary-hover, #5f3fc0);
+    background: var(--color-primary-hover, #5f3fc0);
+    box-shadow: 0 5px 14px color-mix(in srgb, var(--color-primary, #7654d6) 22%, transparent);
+    outline: none;
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 700px) {
+    .article-container {
+      width: calc(100% - 32px);
+    }
+    .article-page {
+      padding: 38px 0 64px;
+    }
+  }
+</style>
