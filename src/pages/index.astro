@@ -398,6 +398,7 @@ const schema = [
   .carousel-viewport {
     min-width: 0;
     width: 100%;
+    max-width: none;
     overflow: hidden;
     position: relative;
     border-radius: 18px;
@@ -415,6 +416,7 @@ const schema = [
   .carousel-slide {
     flex: 0 0 auto;
     min-width: 0;
+    width: 100%;
     box-sizing: border-box;
     padding: 0;
   }
@@ -473,6 +475,8 @@ const schema = [
     display: flex;
     align-items: center;
     width: 100%;
+    max-width: none;
+    box-sizing: border-box;
     min-height: clamp(310px, 32vw, 390px);
     padding: clamp(34px, 5vw, 58px) clamp(30px, 5.5vw, 68px);
     overflow: hidden;
@@ -518,8 +522,8 @@ const schema = [
   .meta-dot { color: var(--color-purple-muted, #625d6b); }
 
   .feature-author {
-    color: var(--color-purple-muted, #625d6b);
-    font-weight: 550;
+    color: var(--color-ink, #121212);
+    font-weight: 600;
   }
 
   .feature-copy h2 {
