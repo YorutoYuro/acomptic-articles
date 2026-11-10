@@ -3,10 +3,13 @@ import Layout from "../layouts/Layout.astro";
 import { getCollection } from "astro:content";
 import authorsData from "../data/authors.json";
 
-export async function getStaticPaths({ paginate }) {
+export async function getStaticPaths() {
   const allArticles = await getCollection("articles");
+  const pageSize = 10;
   
-  return Object.entries(authorsData).flatMap(([username, profile]) => {
+  const paths = [];
+
+  for (const [username, profile] of Object.entries(authorsData)) {
     const authorArticles = allArticles
       .filter((art) => {
         const artAuthor = (art.data.author || "").trim().toLowerCase();
@@ -30,16 +33,34 @@ export async function getStaticPaths({ paginate }) {
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    return paginate(authorArticles, {
-      params: { username },
-      pageSize: 10,
-      props: { profile, username },
-    });
-  });
+    const totalPages = Math.ceil(authorArticles.length / pageSize) || 1;
+
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      const start = (pageNum - 1) * pageSize;
+      const paginatedArticles = authorArticles.slice(start, start + pageSize);
+
+      // Page 1 maps to `/@username`, subsequent pages map to `/@username/2`, etc.
+      const routeParam = pageNum === 1 ? username : `${username}/${pageNum}`;
+
+      paths.push({
+        params: { username: routeParam },
+        props: {
+          profile,
+          username,
+          articles: paginatedArticles,
+          currentPage: pageNum,
+          lastPage: totalPages,
+          totalArticles: authorArticles.length,
+          baseUrl: `/@${username}`,
+        },
+      });
+    }
+  }
+
+  return paths;
 }
 
-const { page, profile, username } = Astro.props;
-const articles = page.data;
+const { profile, username, articles, currentPage, lastPage, totalArticles, baseUrl } = Astro.props;
 
 const formatDate = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
@@ -49,7 +70,7 @@ const formatDate = (date: string) =>
   });
 ---
 
-<Layout title={`${profile.name} (@${username}) - Page ${page.currentPage} - Acomptic`}>
+<Layout title={`${profile.name} (@${username}) - Page ${currentPage} - Acomptic`}>
   <main class="author-profile-page">
     <div class="articles-container">
       
@@ -87,7 +108,7 @@ const formatDate = (date: string) =>
       <!-- AUTHOR ARTICLES LISTING -->
       <section class="author-articles-section">
         <div class="section-title">
-          <h2>Articles by {profile.name} <span>({page.total})</span></h2>
+          <h2>Articles by {profile.name} <span>({totalArticles})</span></h2>
         </div>
 
         {articles.length > 0 ? (
@@ -118,20 +139,20 @@ const formatDate = (date: string) =>
         )}
 
         <!-- PAGINATION CONTROLS -->
-        {page.lastPage > 1 && (
+        {lastPage > 1 && (
           <nav class="pagination-nav" aria-label="Author articles pagination">
-            {page.url.prev ? (
-              <a href={page.url.prev} class="pagination-link">← Previous</a>
+            {currentPage > 1 ? (
+              <a href={currentPage === 2 ? baseUrl : `${baseUrl}/${currentPage - 1}`} class="pagination-link">← Previous</a>
             ) : (
               <span class="pagination-link disabled">← Previous</span>
             )}
 
             <span class="pagination-info">
-              Page {page.currentPage} of {page.lastPage}
+              Page {currentPage} of {lastPage}
             </span>
 
-            {page.url.next ? (
-              <a href={page.url.next} class="pagination-link">Next →</a>
+            {currentPage < lastPage ? (
+              <a href={`${baseUrl}/${currentPage + 1}`} class="pagination-link">Next →</a>
             ) : (
               <span class="pagination-link disabled">Next →</span>
             )}
