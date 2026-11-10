@@ -43,6 +43,14 @@ for (const art of articles) {
 }
 const categories = Array.from(categoryMap.entries()).sort((a, b) => b[1] - a[1]);
 
+const sortOptions = [
+  { value: "relevance", label: "Best match" },
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "shortest", label: "Shortest read" },
+  { value: "longest", label: "Longest read" },
+];
+
 const formatDate = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
     day: "numeric",
@@ -124,16 +132,37 @@ const formatDate = (date: string) =>
                 </div>
               )}
 
-              <label class="sort-wrap">
-                <span>Sort</span>
-                <select id="sort-select">
-                  <option value="relevance" disabled>Best match</option>
-                  <option value="newest" selected>Newest first</option>
-                  <option value="oldest">Oldest first</option>
-                  <option value="shortest">Shortest read</option>
-                  <option value="longest">Longest read</option>
-                </select>
-              </label>
+              <div class="sort-wrap">
+                <span class="sort-label" id="sort-label">Sort</span>
+                <div class="dropdown" id="sort-dropdown">
+                  <button
+                    type="button"
+                    class="dropdown-trigger"
+                    id="sort-trigger"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-labelledby="sort-label sort-current"
+                  >
+                    <span id="sort-current">Newest first</span>
+                    <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                  </button>
+
+                  <ul class="dropdown-menu" id="sort-menu" role="listbox" aria-labelledby="sort-label" hidden>
+                    {sortOptions.map((opt) => (
+                      <li
+                        class="dropdown-option"
+                        role="option"
+                        tabindex="-1"
+                        data-value={opt.value}
+                        aria-selected={opt.value === "newest" ? "true" : "false"}
+                      >
+                        <span>{opt.label}</span>
+                        <svg class="check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </div>
 
             <p class="search-hint">
@@ -205,13 +234,20 @@ const formatDate = (date: string) =>
     const clearBtn = document.getElementById("search-clear") as HTMLButtonElement | null;
     const kbd = document.getElementById("search-kbd");
     const chipsWrap = document.getElementById("category-chips");
-    const sortSelect = document.getElementById("sort-select") as HTMLSelectElement | null;
     const statusEl = document.getElementById("results-status");
     const noResults = document.getElementById("no-results");
     const noResultsClear = document.getElementById("no-results-clear");
     const loadMoreWrap = document.getElementById("load-more-wrap");
     const loadMoreBtn = document.getElementById("load-more") as HTMLButtonElement | null;
-    const relevanceOpt = sortSelect?.querySelector('option[value="relevance"]') as HTMLOptionElement | null;
+
+    // custom sort dropdown
+    const dropdown = document.getElementById("sort-dropdown");
+    const sortTrigger = document.getElementById("sort-trigger") as HTMLButtonElement | null;
+    const sortMenu = document.getElementById("sort-menu") as HTMLElement | null;
+    const sortCurrent = document.getElementById("sort-current");
+    const sortOptionEls = sortMenu
+      ? Array.from(sortMenu.querySelectorAll<HTMLElement>(".dropdown-option"))
+      : [];
 
     // ---------- text helpers ----------
     const norm = (s: string) =>
@@ -371,12 +407,14 @@ const formatDate = (date: string) =>
     let shown = PAGE;
     let debounceTimer: number | undefined;
 
+    const SORT_MODES = ["relevance", "newest", "oldest", "shortest", "longest"];
+
     const params = new URLSearchParams(location.search);
     query = params.get("q") ?? "";
     activeCat = (params.get("cat") ?? "all").toLowerCase();
     if (!records.some((r) => r.category === activeCat)) activeCat = "all";
     const urlSort = params.get("sort");
-    if (urlSort && ["relevance", "newest", "oldest", "shortest", "longest"].includes(urlSort)) {
+    if (urlSort && SORT_MODES.includes(urlSort)) {
       sortValue = urlSort;
       userSorted = true;
     }
@@ -409,16 +447,111 @@ const formatDate = (date: string) =>
       });
     }
 
+    // ---------- custom dropdown ----------
+    function updateSortUI(mode: string, hasQuery: boolean) {
+      sortOptionEls.forEach((opt) => {
+        const val = opt.dataset.value;
+        const selected = val === mode;
+        opt.setAttribute("aria-selected", String(selected));
+        opt.classList.toggle("is-selected", selected);
+
+        if (val === "relevance") {
+          opt.setAttribute("aria-disabled", String(!hasQuery));
+          opt.classList.toggle("is-disabled", !hasQuery);
+        }
+        if (selected && sortCurrent) {
+          sortCurrent.textContent = opt.querySelector("span")?.textContent ?? "";
+        }
+      });
+    }
+
+    const enabledOptions = () => sortOptionEls.filter((o) => o.getAttribute("aria-disabled") !== "true");
+
+    function openMenu() {
+      if (!sortMenu || !sortTrigger) return;
+      sortMenu.hidden = false;
+      sortTrigger.setAttribute("aria-expanded", "true");
+      dropdown?.classList.add("is-open");
+      const target = sortOptionEls.find((o) => o.getAttribute("aria-selected") === "true") ?? enabledOptions()[0];
+      target?.focus();
+    }
+
+    function closeMenu(returnFocus = false) {
+      if (!sortMenu || !sortTrigger) return;
+      sortMenu.hidden = true;
+      sortTrigger.setAttribute("aria-expanded", "false");
+      dropdown?.classList.remove("is-open");
+      if (returnFocus) sortTrigger.focus();
+    }
+
+    function chooseOption(opt: HTMLElement) {
+      if (opt.getAttribute("aria-disabled") === "true") return;
+      sortValue = opt.dataset.value ?? "newest";
+      userSorted = true;
+      shown = PAGE;
+      syncUrl();
+      render();
+      closeMenu(true);
+    }
+
+    sortTrigger?.addEventListener("click", () => {
+      if (sortMenu?.hidden) openMenu();
+      else closeMenu();
+    });
+
+    sortTrigger?.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        openMenu();
+      }
+    });
+
+    sortMenu?.addEventListener("click", (e) => {
+      const opt = (e.target as HTMLElement).closest<HTMLElement>(".dropdown-option");
+      if (opt) chooseOption(opt);
+    });
+
+    sortMenu?.addEventListener("keydown", (e) => {
+      const opts = enabledOptions();
+      const idx = opts.indexOf(document.activeElement as HTMLElement);
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        opts[(idx + 1) % opts.length]?.focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        opts[(idx - 1 + opts.length) % opts.length]?.focus();
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        opts[0]?.focus();
+      } else if (e.key === "End") {
+        e.preventDefault();
+        opts[opts.length - 1]?.focus();
+      } else if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        const opt = document.activeElement as HTMLElement;
+        if (opt?.classList.contains("dropdown-option")) chooseOption(opt);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        closeMenu(true);
+      } else if (e.key === "Tab") {
+        closeMenu();
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (dropdown && !dropdown.contains(e.target as Node)) closeMenu();
+    });
+
+    // ---------- render ----------
     function render() {
       const q = parseQuery(query);
       const hasQuery = q.phrases.length + q.terms.length + q.excluded.length > 0;
       const filtered = hasQuery || activeCat !== "all";
 
-      if (relevanceOpt) relevanceOpt.disabled = !hasQuery;
-
       let mode = userSorted ? sortValue : hasQuery ? "relevance" : "newest";
       if (mode === "relevance" && !hasQuery) mode = "newest";
-      if (sortSelect) sortSelect.value = mode;
+      updateSortUI(mode, hasQuery);
 
       // match
       const matched: { r: Rec; score: number }[] = [];
@@ -541,14 +674,6 @@ const formatDate = (date: string) =>
       const chip = (e.target as HTMLElement).closest<HTMLButtonElement>(".chip");
       if (!chip) return;
       activeCat = chip.dataset.cat ?? "all";
-      shown = PAGE;
-      syncUrl();
-      render();
-    });
-
-    sortSelect?.addEventListener("change", () => {
-      sortValue = sortSelect.value;
-      userSorted = true;
       shown = PAGE;
       syncUrl();
       render();
@@ -829,30 +954,146 @@ const formatDate = (date: string) =>
     color: rgba(255, 255, 255, .8);
   }
 
+  /* ---------- custom sort dropdown ---------- */
   .sort-wrap {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     margin-left: auto;
+  }
+
+  .sort-label {
     color: var(--color-purple-muted, #625d6b);
     font-size: .85rem;
     font-weight: 600;
   }
 
-  .sort-wrap select {
-    padding: 7px 12px;
+  .dropdown {
+    position: relative;
+  }
+
+  .dropdown-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 150px;
+    justify-content: space-between;
+    padding: 8px 14px;
     border: 1px solid var(--color-border, #e9e7ef);
-    border-radius: 8px;
+    border-radius: 10px;
     background: var(--color-white, #fff);
     color: var(--color-ink, #121212);
     font: inherit;
-    font-size: .85rem;
+    font-size: .88rem;
+    font-weight: 600;
     cursor: pointer;
     outline: none;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
   }
 
-  .sort-wrap select:focus {
+  .dropdown-trigger:hover {
+    border-color: var(--color-purple-border, #d9ccff);
+  }
+
+  .dropdown-trigger:focus-visible,
+  .dropdown.is-open .dropdown-trigger {
     border-color: var(--color-primary, #7654d6);
+    box-shadow: 0 0 0 4px rgba(118, 84, 214, 0.12);
+  }
+
+  .chev {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: var(--color-primary, #7654d6);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 180ms ease;
+  }
+
+  .dropdown.is-open .chev {
+    transform: rotate(180deg);
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 30;
+    min-width: 100%;
+    width: max-content;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 14px;
+    background: var(--color-white, #fff);
+    box-shadow: 0 16px 40px rgba(36, 25, 72, 0.12);
+    animation: dropdown-in 140ms ease;
+  }
+
+  .dropdown-menu[hidden] {
+    display: none;
+  }
+
+  @keyframes dropdown-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .dropdown-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 9px 12px;
+    border-radius: 9px;
+    color: var(--color-ink, #121212);
+    font-size: .88rem;
+    font-weight: 550;
+    cursor: pointer;
+    outline: none;
+    transition: background 140ms ease, color 140ms ease;
+  }
+
+  .dropdown-option:hover,
+  .dropdown-option:focus-visible {
+    background: rgba(118, 84, 214, 0.08);
+    color: var(--color-primary, #7654d6);
+  }
+
+  .dropdown-option.is-selected {
+    color: var(--color-primary, #7654d6);
+    font-weight: 700;
+  }
+
+  .dropdown-option.is-disabled {
+    color: var(--color-purple-muted, #625d6b);
+    opacity: .45;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .dropdown-option .check {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: var(--color-primary, #7654d6);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+  }
+
+  .dropdown-option.is-selected .check {
+    opacity: 1;
   }
 
   .search-hint {
@@ -1034,6 +1275,10 @@ const formatDate = (date: string) =>
     }
     .sort-wrap {
       margin-left: 0;
+    }
+    .dropdown-menu {
+      right: auto;
+      left: 0;
     }
   }
 </style>
