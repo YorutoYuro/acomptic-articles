@@ -1,35 +1,80 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import articles from "../data/articles.json";
+import { getCollection } from "astro:content";
 
 const siteURL = "https://articles.acomptic.com";
 const mainSiteURL = "https://acomptic.com";
 
-const categories = {
+// Category display metadata mapping
+const categoryMeta: Record<string, { name: string; description: string }> = {
   insights: {
     name: "Insights",
-    eyebrow: "Business insights",
     description: "Ideas and practical guidance for running a clearer, more efficient business.",
   },
   gst: {
     name: "GST",
-    eyebrow: "GST updates & guides",
     description: "Straightforward guidance on GST returns, input tax credit and compliance.",
   },
   "income-tax": {
     name: "Income Tax",
-    eyebrow: "Income tax guides",
     description: "Understand tax basics, filing requirements and planning for your business.",
   },
 };
 
-const sortedArticles = [...articles].sort(
-  (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+// 1. FETCH ALL MARKDOWN ARTICLES FROM CONTENT COLLECTIONS
+const rawArticles = await getCollection("articles");
+
+// 2. PARSE FOLDER CATEGORIES & SLUGS DYNAMICALLY
+const allArticles = rawArticles.map((article) => {
+  const normalizedId = article.id.replace(/\\/g, "/");
+  const parts = normalizedId.split("/");
+  
+  const category = parts.length > 1 ? parts[0] : "insights";
+  const rawSlug = parts.length > 1 ? parts.slice(1).join("/") : parts[0];
+  const slug = rawSlug.replace(/\.mdx?$/, "");
+
+  return {
+    title: article.data.title,
+    excerpt: article.data.description || article.data.excerpt || "",
+    date: article.data.date,
+    readTime: article.data.readTime || 4,
+    category: category,
+    url: `/${category}/${slug}`,
+  };
+});
+
+// 3. SORT ALL ARTICLES BY DATE (NEWEST FIRST)
+const sortedArticles = [...allArticles].sort(
+  (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
 );
 
-const insightArticles = sortedArticles.filter((article) => article.category === "insights");
-const latestGst = sortedArticles.find((article) => article.category === "gst");
-const latestIncomeTax = sortedArticles.find((article) => article.category === "income-tax");
+// 4. HERO SECTION: LATEST 10 ARTICLES FROM 'INSIGHTS' ONLY
+const insightArticles = sortedArticles
+  .filter((article) => article.category === "insights")
+  .slice(0, 10);
+
+// 5. OTHER CATEGORIES: GROUP BY CATEGORY & LIMIT TO LATEST 3 EACH
+const otherCategoryKeys = Array.from(
+  new Set(sortedArticles.map((a) => a.category))
+).filter((cat) => cat !== "insights");
+
+const categorySections = otherCategoryKeys.map((catKey) => {
+  const articlesInCat = sortedArticles
+    .filter((a) => a.category === catKey)
+    .slice(0, 3); // Top 3 latest articles
+
+  const meta = categoryMeta[catKey] || {
+    name: catKey.toUpperCase().replace("-", " "),
+    description: `Latest articles and guides for ${catKey.replace("-", " ")}.`,
+  };
+
+  return {
+    key: catKey,
+    name: meta.name,
+    description: meta.description,
+    articles: articlesInCat,
+  };
+});
 
 const formatDate = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
@@ -41,7 +86,7 @@ const formatDate = (date: string) =>
 const articleSchema = sortedArticles.map((article, index) => ({
   "@type": "ListItem",
   position: index + 1,
-  url: article.url,
+  url: `${siteURL}${article.url}`,
   name: article.title,
 }));
 
@@ -78,7 +123,8 @@ const schema = [
   schema={schema}
 >
   <main class="articles-page">
-    <!-- HERO / LATEST INSIGHTS -->
+    
+    <!-- HERO / LATEST 10 INSIGHTS CAROUSEL -->
     <section class="articles-hero" aria-label="Latest insights">
       <div class="articles-container">
         {insightArticles.length > 0 ? (
@@ -135,72 +181,51 @@ const schema = [
       </div>
     </section>
 
-    <!-- CATEGORY LATEST ARTICLES -->
+    <!-- CATEGORIES (GST, INCOME TAX, ETC. - LATEST 3 EACH) -->
     <section class="latest-sections" aria-label="Latest articles by category">
       <div class="articles-container">
         <div class="section-intro">
           <h2>More to explore</h2>
         </div>
 
-        <section class="topic-section" aria-labelledby="gst-title">
-          <div class="topic-heading">
-            <div>
-              <h3 id="gst-title">GST</h3>
-              <p>Returns, input tax credit and everyday GST compliance.</p>
+        {categorySections.map((sec) => (
+          <section class="topic-section" aria-labelledby={`${sec.key}-title`}>
+            <div class="topic-heading">
+              <div>
+                <h3 id={`${sec.key}-title`}>{sec.name}</h3>
+                <p>{sec.description}</p>
+              </div>
             </div>
-          </div>
-          {latestGst ? (
-            <a class="article-row" href={latestGst.url}>
-              <div class="row-date">
-                <span>{formatDate(latestGst.date)}</span>
-                <span>{latestGst.readTime} min read</span>
-              </div>
-              <div class="row-copy">
-                <h4>{latestGst.title}</h4>
-                <p>{latestGst.excerpt}</p>
-              </div>
-              <span class="row-action" aria-label="Read article">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </span>
-            </a>
-          ) : (
-            <p class="empty-topic">The latest GST article will appear here.</p>
-          )}
-        </section>
 
-        <section class="topic-section" aria-labelledby="income-tax-title">
-          <div class="topic-heading">
-            <div>
-              <h3 id="income-tax-title">Income Tax</h3>
-              <p>Tax basics, filing guidance and planning for small businesses.</p>
-            </div>
-          </div>
-          {latestIncomeTax ? (
-            <a class="article-row" href={latestIncomeTax.url}>
-              <div class="row-date">
-                <span>{formatDate(latestIncomeTax.date)}</span>
-                <span>{latestIncomeTax.readTime} min read</span>
+            {sec.articles.length > 0 ? (
+              <div class="topic-articles-list">
+                {sec.articles.map((art) => (
+                  <a class="article-row" href={art.url}>
+                    <div class="row-date">
+                      <span>{formatDate(art.date)}</span>
+                      <span>{art.readTime} min read</span>
+                    </div>
+                    <div class="row-copy">
+                      <h4>{art.title}</h4>
+                      <p>{art.excerpt}</p>
+                    </div>
+                    <span class="row-action" aria-label="Read article">
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </span>
+                  </a>
+                ))}
               </div>
-              <div class="row-copy">
-                <h4>{latestIncomeTax.title}</h4>
-                <p>{latestIncomeTax.excerpt}</p>
-              </div>
-              <span class="row-action" aria-label="Read article">
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M5 12h14M12 5l7 7-7 7" />
-                </svg>
-              </span>
-            </a>
-          ) : (
-            <p class="empty-topic">The latest Income Tax article will appear here.</p>
-          )}
-        </section>
+            ) : (
+              <p class="empty-topic">Articles for {sec.name} will appear here.</p>
+            )}
+          </section>
+        ))}
       </div>
     </section>
 
-    <!-- KEEP THE EXISTING ACOMPTIC CTA -->
+    <!-- ACOMPTIC CTA -->
     <section class="articles-cta" aria-labelledby="articles-cta-title">
       <div class="articles-container">
         <div class="cta-card">
@@ -224,14 +249,13 @@ const schema = [
   document.querySelectorAll<HTMLElement>("[data-insights-carousel]").forEach((carousel) => {
     const track = carousel.querySelector<HTMLElement>("[data-carousel-track]");
     const originalSlides = Array.from(
-      carousel.querySelectorAll<HTMLElement>("[data-carousel-slide]"),
+      carousel.querySelectorAll<HTMLElement>("[data-carousel-slide]")
     );
     const previous = carousel.querySelector<HTMLButtonElement>("[data-carousel-prev]");
     const next = carousel.querySelector<HTMLButtonElement>("[data-carousel-next]");
 
     if (!track || originalSlides.length < 2) return;
 
-    // Clone the ends so moving past the final/first article feels continuous.
     const firstClone = originalSlides[0].cloneNode(true) as HTMLElement;
     const lastClone = originalSlides[originalSlides.length - 1].cloneNode(true) as HTMLElement;
 
@@ -343,16 +367,7 @@ const schema = [
     margin-inline: auto;
   }
 
-  .eyebrow {
-    margin: 0 0 13px;
-    color: var(--color-primary, #7654d6);
-    font-size: .78rem;
-    font-weight: 650;
-    letter-spacing: .11em;
-    text-transform: uppercase;
-  }
-
-  /* Featured insight */
+  /* Featured Hero Carousel */
   .articles-hero {
     padding: 58px 0 48px;
     background: var(--color-white, #fff);
@@ -401,13 +416,7 @@ const schema = [
     background: var(--color-white, #fff);
     color: var(--color-primary, #7654d6);
     cursor: pointer;
-    transition:
-      background-color 240ms cubic-bezier(.2, .7, .2, 1),
-      color 240ms cubic-bezier(.2, .7, .2, 1),
-      border-color 240ms cubic-bezier(.2, .7, .2, 1),
-      box-shadow 240ms cubic-bezier(.2, .7, .2, 1),
-      transform 240ms cubic-bezier(.2, .7, .2, 1);
-    -webkit-tap-highlight-color: transparent;
+    transition: background-color 240ms ease, color 240ms ease, border-color 240ms ease, transform 240ms ease;
   }
 
   .carousel-arrow svg {
@@ -419,28 +428,7 @@ const schema = [
     border-color: var(--color-primary, #7654d6);
     background: var(--color-primary, #7654d6);
     color: var(--color-white, #fff);
-    box-shadow: 0 5px 14px color-mix(in srgb, var(--color-primary, #7654d6) 18%, transparent);
   }
-
-  .carousel-arrow:focus-visible {
-    border-color: var(--color-primary, #7654d6);
-    outline: 3px solid color-mix(in srgb, var(--color-primary, #7654d6) 24%, transparent);
-    outline-offset: 3px;
-  }
-
-  .carousel-arrow:active {
-    transform: scale(.94);
-  }
-
-  .carousel-prev:hover { transform: translateX(-2px) scale(1.04); }
-  .carousel-next:hover { transform: translateX(2px) scale(1.04); }
-
-  .carousel-arrow svg {
-    transition: transform 240ms cubic-bezier(.2, .7, .2, 1);
-  }
-
-  .carousel-prev:hover svg { transform: translateX(-1px); }
-  .carousel-next:hover svg { transform: translateX(1px); }
 
   .latest-feature {
     position: relative;
@@ -460,13 +448,6 @@ const schema = [
     border-color: var(--color-primary, #7654d6);
     box-shadow: 0 6px 22px rgb(36 25 72 / 6%);
     outline: none;
-  }
-
-  .feature-content,
-  .feature-copy {
-    display: block;
-    width: 100%;
-    max-width: none;
   }
 
   .feature-kicker {
@@ -512,7 +493,6 @@ const schema = [
     flex-wrap: wrap;
     align-items: center;
     gap: 9px;
-    margin: 0;
     color: var(--color-purple-muted, #625d6b);
     font-size: .84rem;
   }
@@ -535,73 +515,35 @@ const schema = [
     border: 1px solid var(--color-purple-border, #e5dcff);
     border-radius: 50%;
     background: var(--color-white, #fff);
-    transition:
-      color 240ms cubic-bezier(.2, .7, .2, 1),
-      background-color 240ms cubic-bezier(.2, .7, .2, 1),
-      border-color 240ms cubic-bezier(.2, .7, .2, 1),
-      box-shadow 240ms cubic-bezier(.2, .7, .2, 1),
-      transform 240ms cubic-bezier(.2, .7, .2, 1);
+    transition: background-color 240ms ease, border-color 240ms ease, color 240ms ease;
   }
 
   .text-link-arrow svg {
     width: 15px;
     height: 15px;
-    color: currentColor;
   }
 
-  .latest-feature:hover .text-link-arrow,
-  .latest-feature:focus-visible .text-link-arrow {
+  .latest-feature:hover .text-link-arrow {
     border-color: var(--color-primary, #7654d6);
     background: var(--color-primary, #7654d6);
     color: var(--color-white, #fff);
-    transform: translateX(2px);
   }
 
-  .empty-feature,
-  .empty-topic {
-    padding: 28px;
-    border: 1px solid var(--color-border, #e9e7ef);
-    border-radius: 12px;
-    color: var(--color-purple-muted, #625d6b);
-  }
-
-  .empty-feature h2 {
-    margin: 0 0 6px;
-    color: var(--color-ink, #121212);
-  }
-
-  .empty-feature p {
-    margin: 0;
-  }
-
-  /* Latest by category */
+  /* Category List Below Hero */
   .latest-sections {
     padding: 64px 0 80px;
   }
 
-  .section-intro {
-    margin-bottom: 20px;
-  }
-
   .section-intro h2 {
-    margin: 0;
+    margin: 0 0 20px;
     font-size: clamp(1.6rem, 2.5vw, 2rem);
     font-weight: 650;
     letter-spacing: -.035em;
-    line-height: 1.2;
   }
 
   .topic-section {
     padding: 26px 0 30px;
     border-top: 1px solid var(--color-border, #e9e7ef);
-  }
-
-  .topic-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 20px;
-    margin-bottom: 16px;
   }
 
   .topic-heading h3 {
@@ -612,10 +554,16 @@ const schema = [
     letter-spacing: -.03em;
   }
 
-  .topic-heading p:not(.topic-eyebrow) {
-    margin: 5px 0 0;
+  .topic-heading p {
+    margin: 5px 0 18px;
     color: var(--color-purple-muted, #625d6b);
     font-size: .92rem;
+  }
+
+  .topic-articles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 
   .article-row {
@@ -652,7 +600,6 @@ const schema = [
     color: var(--color-ink, #121212);
     font-size: clamp(1.1rem, 2vw, 1.35rem);
     font-weight: 650;
-    letter-spacing: -.025em;
     line-height: 1.4;
   }
 
@@ -676,37 +623,21 @@ const schema = [
     border: 1px solid var(--color-border, #e9e7ef);
     border-radius: 50%;
     color: var(--color-primary, #7654d6);
+    transition: background-color 240ms ease, border-color 240ms ease, color 240ms ease;
   }
 
   .row-action svg {
     width: 17px;
     height: 17px;
-    transition: transform 240ms cubic-bezier(.2, .7, .2, 1);
   }
 
-  .article-row .row-action {
-    transition:
-      color 240ms cubic-bezier(.2, .7, .2, 1),
-      background-color 240ms cubic-bezier(.2, .7, .2, 1),
-      border-color 240ms cubic-bezier(.2, .7, .2, 1),
-      box-shadow 240ms cubic-bezier(.2, .7, .2, 1),
-      transform 240ms cubic-bezier(.2, .7, .2, 1);
-  }
-
-  .article-row:hover .row-action,
-  .article-row:focus-visible .row-action {
+  .article-row:hover .row-action {
     border-color: var(--color-primary, #7654d6);
     background: var(--color-primary, #7654d6);
     color: var(--color-white, #fff);
-    box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary, #7654d6) 16%, transparent);
   }
 
-  .article-row:hover .row-action svg,
-  .article-row:focus-visible .row-action svg {
-    transform: translateX(3px);
-  }
-
-  /* Existing CTA card retained */
+  /* Bottom CTA */
   .articles-cta {
     padding: 0 0 88px;
   }
@@ -728,7 +659,6 @@ const schema = [
     margin: 0;
     font-size: clamp(1.75rem, 3vw, 2.5rem);
     font-weight: 700;
-    letter-spacing: -.045em;
     line-height: 1.15;
   }
 
@@ -746,150 +676,27 @@ const schema = [
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
-    min-height: 48px;
     padding: 12px 25px;
     border: 1px solid var(--color-primary, #7654d6);
     border-radius: 999px;
     background: var(--color-primary, #7654d6);
     color: var(--color-white, #fff);
-    font: inherit;
     font-size: .96rem;
     font-weight: 650;
     text-decoration: none;
     white-space: nowrap;
-    transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
-  }
-
-  .articles-btn:hover,
-  .articles-btn:focus-visible {
-    border-color: var(--color-primary-hover, #5f3fc0);
-    background: var(--color-primary-hover, #5f3fc0);
-    box-shadow: 0 5px 14px color-mix(in srgb, var(--color-primary, #7654d6) 22%, transparent);
-    outline: none;
-    transform: translateY(-1px);
   }
 
   @media (max-width: 700px) {
     .articles-container {
       width: calc(100% - 32px);
     }
-
-    .articles-hero {
-      padding: 38px 0 34px;
-    }
-
-    .insights-carousel {
-      grid-template-columns: 36px minmax(0, 1fr) 36px;
-      gap: 8px;
-    }
-
-    .carousel-viewport {
-      border-radius: 12px;
-    }
-
-    .carousel-arrow {
-      width: 36px;
-      height: 36px;
-    }
-
-    .carousel-arrow svg {
-      width: 17px;
-      height: 17px;
-    }
-
-    .latest-feature {
-      padding: 26px 21px;
-      border-radius: 12px;
-    }
-
-    .feature-kicker {
-      margin-bottom: 16px;
-    }
-
-    .feature-copy h2 {
-      font-size: clamp(1.8rem, 8vw, 2.45rem);
-    }
-
-    .feature-excerpt {
-      margin-top: 15px;
-      font-size: .97rem;
-    }
-
-    .feature-bottom {
-      align-items: center;
-      flex-direction: row;
-      gap: 12px;
-      margin-top: 24px;
-      padding-top: 18px;
-    }
-
-    .text-link {
-      gap: 8px;
-      font-size: .86rem;
-      white-space: nowrap;
-    }
-
-    .text-link-arrow {
-      width: 27px;
-      height: 27px;
-    }
-
-    .latest-sections {
-      padding: 46px 0 56px;
-    }
-
     .article-row {
       grid-template-columns: minmax(0, 1fr) 36px;
-      gap: 14px;
-      padding: 20px 17px;
     }
-
     .row-date {
       grid-column: 1 / -1;
       flex-direction: row;
-      gap: 9px;
-    }
-
-    .row-copy {
-      grid-column: 1;
-      grid-row: 2;
-    }
-
-    .row-action {
-      width: 36px;
-      height: 36px;
-      grid-column: 2;
-      grid-row: 2;
-    }
-
-    .topic-heading {
-      margin-bottom: 14px;
-    }
-
-    .articles-cta {
-      padding-bottom: 56px;
-    }
-
-    .articles-btn {
-      width: fit-content;
-      max-width: 100%;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .carousel-track,
-    .carousel-arrow,
-    .carousel-arrow svg,
-    .latest-feature,
-    .text-link-arrow,
-    .article-row,
-    .row-action,
-    .row-action svg,
-    .articles-btn {
-      transition: none !important;
-      transform: none !important;
-      scroll-behavior: auto !important;
     }
   }
 </style>
