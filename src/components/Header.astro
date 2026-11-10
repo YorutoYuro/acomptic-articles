@@ -45,11 +45,13 @@ const currentPath = Astro.url.pathname;
     </nav>
 
     <div class="header-actions">
-      <button id="search-trigger" class="search-button" type="button" aria-label="Search articles">
+      <!-- Upgraded Search Button with Capsule Shape and Icon Lift Animation -->
+      <button id="search-trigger" class="search-button-capsule" type="button" aria-label="Search articles">
         <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="11" cy="11" r="8"></circle>
           <path d="m21 21-4.35-4.35"></path>
         </svg>
+        <span>Search</span>
       </button>
 
       <a class="try-button" href={accountURL} target="_blank" rel="noopener noreferrer">
@@ -62,7 +64,7 @@ const currentPath = Astro.url.pathname;
   </div>
 </header>
 
-<!-- Search Modal Dialog -->
+<!-- Upgraded Larger Search Modal Dialog -->
 <dialog id="search-modal" class="search-modal">
   <div class="modal-content">
     <div class="modal-header">
@@ -73,19 +75,25 @@ const currentPath = Astro.url.pathname;
       <input 
         type="search" 
         id="search-input" 
-        placeholder="Search articles by title, category, or keyword..." 
+        placeholder="Search articles by title, author, or keyword (spaces optional)..." 
         autocomplete="off"
       />
       <button type="button" id="close-modal" aria-label="Close search">×</button>
     </div>
     
     <div id="search-results" class="search-results">
-      <p class="search-hint">Type a keyword to explore articles instantly...</p>
+      <div class="search-empty-state">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        <p>Type any keyword, author handle, or topic to explore articles instantly.</p>
+      </div>
     </div>
   </div>
 </dialog>
 
-<!-- Pass build-time articles index to client script -->
+<!-- Advanced Tokenized & Fuzzy Search Engine Script -->
 <script define:vars={{ articlesCache: allArticles }}>
   const searchTrigger = document.getElementById('search-trigger');
   const searchModal = document.getElementById('search-modal');
@@ -93,18 +101,15 @@ const currentPath = Astro.url.pathname;
   const searchInput = document.getElementById('search-input');
   const searchResults = document.getElementById('search-results');
 
-  // Open modal
   searchTrigger?.addEventListener('click', () => {
     searchModal?.showModal();
     searchInput?.focus();
   });
 
-  // Close modal via button
   closeModal?.addEventListener('click', () => {
     searchModal?.close();
   });
 
-  // Close modal when clicking outside content backdrop
   searchModal?.addEventListener('click', (event) => {
     const rect = searchModal.getBoundingClientRect();
     if (
@@ -117,26 +122,79 @@ const currentPath = Astro.url.pathname;
     }
   });
 
-  // Live query handling using the centralized index cache (already sorted by date desc)
+  // Helper to strip all spaces and special characters for flexible matching
+  const sanitize = (str) => (str || "").toString().toLowerCase().replace(/[\s@_-]+/g, "");
+
   searchInput?.addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase().trim();
+    const rawQuery = e.target.value.trim();
+    const query = rawQuery.toLowerCase();
+    const queryCompact = sanitize(rawQuery);
     
     if (!query) {
       if (searchResults) {
-        searchResults.innerHTML = '<p class="search-hint">Type a keyword to explore articles instantly...</p>';
+        searchResults.innerHTML = `
+          <div class="search-empty-state">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.35-4.35"></path>
+            </svg>
+            <p>Type any keyword, author handle, or topic to explore articles instantly.</p>
+          </div>
+        `;
       }
       return;
     }
 
-    const filtered = articlesCache.filter((article) => {
-      const targetText = `${article.title} ${article.excerpt} ${article.category} ${article.authorHandle}`.toLowerCase();
-      return targetText.includes(query);
+    // Split raw query into search tokens for multi-word matching
+    const queryTokens = query.split(/\s+/).filter(Boolean);
+
+    const scoredResults = articlesCache.map((article) => {
+      let score = 0;
+      const title = (article.title || "").toLowerCase();
+      const excerpt = (article.excerpt || "").toLowerCase();
+      const author = (article.authorHandle || "").toLowerCase();
+      const category = (article.category || "").toLowerCase();
+
+      const titleCompact = sanitize(title);
+      const excerptCompact = sanitize(excerpt);
+      const authorCompact = sanitize(author);
+
+      // 1. Exact or compact substring match on author handle (e.g. "omkumawat" matches "om kumawat")
+      if (author.includes(query) || authorCompact.includes(queryCompact)) {
+        score += 50;
+      }
+
+      // 2. Token matching across title and excerpt (with and without spaces)
+      queryTokens.forEach(token => {
+        const tokenCompact = sanitize(token);
+        if (title.includes(token) || titleCompact.includes(tokenCompact)) score += 20;
+        if (excerpt.includes(token) || excerptCompact.includes(tokenCompact)) score += 10;
+        if (category.includes(token)) score += 15;
+      });
+
+      // 3. Compact full string match bonus
+      if (titleCompact.includes(queryCompact)) score += 30;
+
+      return { article, score };
     });
+
+    // Filter out zero scores and sort by relevance score, then recency (date)
+    const filtered = scoredResults
+      .filter(item => item.score > 0)
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return new Date(b.article.date).getTime() - new Date(a.article.date).getTime();
+      })
+      .map(item => item.article);
 
     if (!searchResults) return;
 
     if (filtered.length === 0) {
-      searchResults.innerHTML = `<p class="search-hint">No articles found matching "${query}"</p>`;
+      searchResults.innerHTML = `
+        <div class="search-empty-state">
+          <p>No articles found matching "${rawQuery}". Try a different spelling or keyword.</p>
+        </div>
+      `;
       return;
     }
 
@@ -148,16 +206,21 @@ const currentPath = Astro.url.pathname;
       });
 
       return `
-        <a class="result-card-item" href="${art.url}">
-          <div class="result-card-top">
-            <span class="result-category">${art.category.toUpperCase()}</span>
-            <span class="result-meta-dot">•</span>
-            <span class="result-date">${formattedDate}</span>
-            <span class="result-meta-dot">•</span>
-            <span class="result-readtime">${art.readTime} min read</span>
+        <a class="article-row" href="${art.url}">
+          <div class="row-date">
+            <span>${formattedDate}</span>
+            <span>${art.readTime} min read</span>
+            <span class="row-category">${art.category.toUpperCase()}</span>
           </div>
-          <div class="result-title">${art.title}</div>
-          <div class="result-snippet">${art.excerpt}</div>
+          <div class="row-copy">
+            <h4>${art.title}</h4>
+            <p>${art.excerpt}</p>
+          </div>
+          <span class="row-action" aria-label="Read article">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </span>
         </a>
       `;
     }).join('');
@@ -171,18 +234,10 @@ const currentPath = Astro.url.pathname;
     top: 0;
     z-index: 100;
     width: 100%;
-    max-width: none;
-    margin: 0;
-    border: none;
-    border-bottom: 1px solid rgb(20 20 20 / 10%);
-    border-radius: 0;
     background: #ffffff;
-    box-shadow: none;
-    -webkit-backdrop-filter: none;
-    backdrop-filter: none;
+    border-bottom: 1px solid rgb(20 20 20 / 10%);
   }
 
-  /* Main layout */
   .header-inner {
     width: 100%;
     min-height: 70px;
@@ -193,13 +248,11 @@ const currentPath = Astro.url.pathname;
     padding: 10px 26px;
   }
 
-  /* Brand styling with vertical logo centering */
   .brand {
     display: inline-flex;
     align-items: center;
     justify-self: start;
     gap: 11px;
-    min-width: 0;
     color: var(--color-text);
     text-decoration: none;
   }
@@ -207,20 +260,14 @@ const currentPath = Astro.url.pathname;
   .brand-logo {
     width: 50px;
     height: 50px;
-    display: block;
-    flex: 0 0 50px;
     border-radius: 10px;
     object-fit: contain;
     padding: 5px;
-    box-sizing: border-box;
   }
 
   .brand-text {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    min-width: 0;
   }
 
   .brand-wordmark {
@@ -229,96 +276,65 @@ const currentPath = Astro.url.pathname;
     font-weight: 600;
     letter-spacing: 0.015em;
     line-height: 1.1;
-    white-space: nowrap;
     color: var(--color-text);
-    -webkit-font-smoothing: antialiased;
   }
 
   .brand-tag {
     margin-top: 1px;
     color: var(--color-purple-muted, #625a7a);
-    font-family: var(--font-primary);
     font-size: 16px;
     font-weight: 400;
-    letter-spacing: 0.02em;
-    line-height: 1.1;
-    text-transform: none;
   }
 
-  /* Desktop navigation */
   .main-nav {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: clamp(16px, 2.2vw, 30px);
-    min-width: 0;
   }
 
   .nav-link {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
     padding-block: 8px;
     color: var(--color-text);
-    font-family: var(--font-primary);
     font-size: 15px;
     font-weight: 400;
-    line-height: 1.4;
     text-decoration: none;
-    white-space: nowrap;
     transition: color 220ms ease;
   }
 
   .nav-link:hover,
-  .nav-link:focus-visible {
-    color: var(--color-primary, #7654d6);
-  }
-
   .nav-link.active {
     color: var(--color-primary, #7654d6);
     font-weight: 500;
   }
 
-  .nav-link:focus-visible,
-  .brand:focus-visible,
-  .search-button:focus-visible,
-  .try-button:focus-visible {
-    outline: 2px solid var(--color-primary, #7654d6);
-    outline-offset: 4px;
-    border-radius: 4px;
-  }
-
-  /* Header actions */
   .header-actions {
     display: flex;
     align-items: center;
     justify-self: end;
-    gap: 8px;
+    gap: 10px;
   }
 
-  /* Search button matching action styles */
-  .search-button {
+  /* Upgraded Capsule Search Button with Icon Lift Animation */
+  .search-button-capsule {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
-    padding: 0;
+    gap: 7px;
+    min-height: 40px;
+    padding: 9px 20px;
     border: 1px solid rgb(20 20 20 / 12%);
-    border-radius: 50%;
+    border-radius: 999px;
     background: #ffffff;
     color: var(--color-text);
+    font-family: var(--font-primary);
+    font-size: 15px;
+    font-weight: 600;
     cursor: pointer;
-    transition:
-      background-color 220ms ease,
-      border-color 220ms ease,
-      box-shadow 220ms ease,
-      color 220ms ease;
+    transition: background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease, color 220ms ease;
   }
 
-  .search-button:hover {
+  .search-button-capsule:hover {
     background: var(--color-primary, #7654d6);
     border-color: var(--color-primary, #7654d6);
     color: #ffffff;
@@ -326,13 +342,18 @@ const currentPath = Astro.url.pathname;
   }
 
   .search-icon {
-    width: 17px;
-    height: 17px;
+    width: 16px;
+    height: 16px;
     fill: none;
     stroke: currentColor;
     stroke-width: 2.2;
     stroke-linecap: round;
     stroke-linejoin: round;
+    transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .search-button-capsule:hover .search-icon {
+    transform: translateY(-2px);
   }
 
   /* Try button */
@@ -350,14 +371,8 @@ const currentPath = Astro.url.pathname;
     font-family: var(--font-primary);
     font-size: 15px;
     font-weight: 600;
-    line-height: 1.2;
     text-decoration: none;
-    white-space: nowrap;
-    transition:
-      background-color 220ms ease,
-      border-color 220ms ease,
-      box-shadow 220ms ease,
-      color 220ms ease;
+    transition: background-color 220ms ease, border-color 220ms ease, box-shadow 220ms ease, color 220ms ease;
   }
 
   .try-button:hover {
@@ -370,8 +385,6 @@ const currentPath = Astro.url.pathname;
   .outbound-icon {
     width: 15px;
     height: 15px;
-    flex: 0 0 auto;
-    overflow: visible;
     fill: none;
     stroke: currentColor;
     stroke-width: 2.2;
@@ -381,44 +394,43 @@ const currentPath = Astro.url.pathname;
     transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  .try-button:hover .outbound-icon,
-  .try-button:focus-visible .outbound-icon {
+  .try-button:hover .outbound-icon {
     transform: translate(2px, -2px);
   }
 
-  /* Search Modal Dialog Styles */
+  /* Larger, Premium Search Modal Dialog */
   .search-modal {
     padding: 0;
     border: 1px solid var(--color-purple-border, #e5dcff);
-    border-radius: 18px;
-    width: min(720px, 92vw);
+    border-radius: 20px;
+    width: min(840px, 94vw);
     background: #ffffff;
-    box-shadow: 0 24px 48px rgb(18 18 18 / 18%);
+    box-shadow: 0 30px 60px rgb(18 18 18 / 20%);
     overflow: hidden;
   }
 
   .search-modal::backdrop {
-    background: rgba(18, 18, 18, 0.45);
-    backdrop-filter: blur(4px);
+    background: rgba(18, 18, 18, 0.5);
+    backdrop-filter: blur(6px);
   }
 
   .modal-content {
     display: flex;
     flex-direction: column;
-    max-height: 82vh;
+    max-height: 85vh;
   }
 
   .modal-header {
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 18px 24px;
+    gap: 16px;
+    padding: 22px 28px;
     border-bottom: 1px solid rgb(20 20 20 / 10%);
   }
 
   .search-icon-modal {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     flex: 0 0 auto;
     fill: none;
     stroke: var(--color-text);
@@ -430,7 +442,7 @@ const currentPath = Astro.url.pathname;
     border: none;
     outline: none;
     font-family: var(--font-primary);
-    font-size: 17px;
+    font-size: 18px;
     color: var(--color-text);
     background: transparent;
   }
@@ -438,120 +450,132 @@ const currentPath = Astro.url.pathname;
   #close-modal {
     background: none;
     border: none;
-    font-size: 26px;
+    font-size: 28px;
     cursor: pointer;
     color: var(--color-text);
-    padding: 0 4px;
+    padding: 0 6px;
+    transition: color 180ms ease;
+  }
+
+  #close-modal:hover {
+    color: var(--color-primary, #7654d6);
   }
 
   .search-results {
-    padding: 20px 24px;
+    padding: 24px 28px;
     overflow-y: auto;
-    min-height: 220px;
-    max-height: 55vh;
+    min-height: 320px;
+    max-height: 60vh;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
     background: var(--color-white, #fff);
   }
 
-  .search-hint {
-    color: #625a7a;
-    font-size: 14px;
-    text-align: center;
-    margin-top: 60px;
-  }
-
-  /* Result Card Styling (Matching article row cards) */
-  .result-card-item {
+  .search-empty-state {
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 16px 20px;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 14px;
+    margin-top: 70px;
+    color: var(--color-purple-muted, #625d6b);
+  }
+
+  .search-empty-state svg {
+    width: 48px;
+    height: 48px;
+    stroke: var(--color-purple-muted, #625d6b);
+    fill: none;
+    stroke-width: 1.5;
+    opacity: 0.5;
+  }
+
+  .search-empty-state p {
+    font-size: 1rem;
+    max-width: 360px;
+    margin: 0;
+  }
+
+  /* Reusing Author Profile Page Article Row Card Styling */
+  .article-row {
+    display: grid;
+    grid-template-columns: 168px minmax(0, 1fr) 42px;
+    gap: 26px;
+    align-items: center;
+    padding: 20px 24px;
     border: 1px solid var(--color-border, #e9e7ef);
-    border-radius: 12px;
+    border-radius: 15px;
     background: var(--color-white, #fff);
     color: inherit;
     text-decoration: none;
     transition: border-color 200ms ease, box-shadow 200ms ease, transform 180ms ease;
   }
 
-  .result-card-item:hover {
+  .article-row:hover {
     border-color: var(--color-purple-border, #d9ccff);
     box-shadow: 0 8px 24px rgba(36, 25, 72, 0.055);
+    transform: translateY(-1px);
   }
 
-  .result-card-top {
+  .row-date {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.78rem;
+    flex-direction: column;
+    gap: 4px;
     color: var(--color-purple-muted, #625d6b);
-    font-weight: 500;
+    font-size: .8rem;
   }
 
-  .result-category {
+  .row-category {
     color: var(--color-primary, #7654d6);
     font-weight: 700;
+    font-size: .74px;
   }
 
-  .result-meta-dot {
-    opacity: 0.5;
-  }
-
-  .result-title {
-    font-family: var(--font-primary);
+  .row-copy h4 {
+    margin: 0;
+    font-size: 1.15rem;
     font-weight: 650;
-    font-size: 1.1rem;
-    line-height: 1.35;
     color: var(--color-text);
-    transition: color 180ms ease;
   }
 
-  .result-card-item:hover .result-title {
-    color: var(--color-primary, #7654d6);
-  }
-
-  .result-snippet {
-    font-size: 0.9rem;
+  .row-copy p {
+    margin: 6px 0 0;
     color: var(--color-purple-muted, #625d6b);
+    font-size: .88rem;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    margin: 0;
   }
 
-  /* Responsive Adjustments */
-  @media (max-width: 1000px) {
-    .header-inner {
-      gap: 18px;
-      padding-inline: 20px;
-    }
-    .brand-wordmark { font-size: 21px; }
-    .brand-tag { font-size: 15px; }
-    .main-nav { gap: 16px; }
-    .nav-link { font-size: 14px; }
+  .row-action {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 50%;
+    color: var(--color-primary, #7654d6);
+  }
+
+  .row-action svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
   }
 
   @media (max-width: 760px) {
-    .header-inner {
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 12px 16px;
-      padding: 12px 18px;
+    .article-row {
+      grid-template-columns: minmax(0, 1fr) 36px;
     }
-    .header-actions {
-      grid-column: 2;
-      grid-row: 1;
-    }
-    .main-nav {
+    .row-date {
       grid-column: 1 / -1;
-      grid-row: 2;
-      justify-content: center;
-      gap: clamp(20px, 5vw, 30px);
-      overflow-x: auto;
-      scrollbar-width: none;
+      flex-direction: row;
+      gap: 12px;
     }
-    .main-nav::-webkit-scrollbar { display: none; }
   }
 </style>
