@@ -5,7 +5,7 @@ description: "Discover why micro-businesses and shopkeepers benefit more from st
 readTime: 4
 author: "Om Kumawat"
 authorHandle: "@omkumawat"
-authorUrl: "https://x.com/omkumawat"
+authorUrl: "https://articles.acomptic.com/@omkumawat"
 ---
 
 Most traditional accounting software is built for large corporate accountants, not for local shopkeepers, distributors, or small business owners. When you are managing inventory and billing customers all day, dealing with complex debit notes, credit balances, and confusing financial jargon creates unnecessary friction.
