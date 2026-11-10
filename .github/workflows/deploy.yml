@@ -1,49 +1,35 @@
-name: Deploy Astro to GitHub Pages
+name: Deploy Astro Site
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - main  # Ensure it only triggers on your main source branch
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
+# THIS STOPS THE QUEUE PILE-UP: Automatically cancels older pending deployment runs
 concurrency:
-  group: "pages"
+  group: pages-deployment
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
-          cache: npm
+          node-version: 20
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Build Astro site
         run: npm run build
 
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4
         with:
           path: ./dist
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
