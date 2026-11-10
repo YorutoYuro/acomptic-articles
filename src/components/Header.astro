@@ -1,0 +1,670 @@
+---
+import articlesData from "../data/index.json";
+
+const navLinks = [
+  { label: "Taxation", href: "/taxation/" },
+  { label: "Insights", href: "/insights/" },
+  { label: "Join Us", href: "/join/" },
+];
+
+const accountURL = "https://acomptic.com";
+const currentPath = Astro.url.pathname;
+---
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="brand" href="/" aria-label="Acomptic Articles home">
+      <img
+        class="brand-logo"
+        src="/logo.svg"
+        loading="eager"
+        decoding="async"
+        alt=""
+        aria-hidden="true"
+      />
+      <span class="brand-text">
+        <span class="brand-wordmark">Acomptic</span>
+        <span class="brand-tag">articles.</span>
+      </span>
+    </a>
+
+    <nav class="main-nav" aria-label="Main navigation">
+      {navLinks.map((link) => {
+        const isActive =
+          currentPath === link.href || currentPath.startsWith(link.href);
+
+        return (
+          <a class={`nav-link ${isActive ? "active" : ""}`} href={link.href}>
+            {link.label}
+          </a>
+        );
+      })}
+    </nav>
+
+    <div class="header-actions">
+      <button id="search-trigger" class="search-button" type="button" aria-label="Search articles">
+        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+      </button>
+
+      <a class="try-button" href={accountURL} target="_blank" rel="noopener noreferrer">
+        <span>Try Acomptic</span>
+        <svg class="outbound-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 17L17 7M17 7H7M17 7V17" />
+        </svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+<!-- Search Modal Dialog -->
+<dialog id="search-modal" class="search-modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <svg class="search-icon-modal" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"></circle>
+        <path d="m21 21-4.35-4.35"></path>
+      </svg>
+      <input 
+        type="search" 
+        id="search-input" 
+        placeholder="Search by title, author, or keyword..." 
+        autocomplete="off"
+      />
+      <button type="button" id="close-modal" aria-label="Close search">×</button>
+    </div>
+    
+    <div id="search-results" class="search-results">
+      <p class="search-hint">Type a keyword to start searching...</p>
+    </div>
+  </div>
+</dialog>
+
+<script define:vars={{ articlesCache: articlesData }}>
+  const searchTrigger = document.getElementById('search-trigger');
+  const searchModal = document.getElementById('search-modal');
+  const closeModal = document.getElementById('close-modal');
+  const searchInput = document.getElementById('search-input');
+  const searchResults = document.getElementById('search-results');
+
+  // Open modal
+  searchTrigger?.addEventListener('click', () => {
+    searchModal?.showModal();
+    searchInput?.focus();
+  });
+
+  // Close modal via button
+  closeModal?.addEventListener('click', () => {
+    searchModal?.close();
+  });
+
+  // Close modal when clicking outside content backdrop
+  searchModal?.addEventListener('click', (event) => {
+    const rect = searchModal.getBoundingClientRect();
+    if (
+      event.clientX < rect.left ||
+      event.clientX > rect.right ||
+      event.clientY < rect.top ||
+      event.clientY > rect.bottom
+    ) {
+      searchModal.close();
+    }
+  });
+
+  // Live query handling using the embedded build-time array
+  searchInput?.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase().trim();
+    
+    if (!query) {
+      if (searchResults) {
+        searchResults.innerHTML = '<p class="search-hint">Type a keyword to start searching...</p>';
+      }
+      return;
+    }
+
+    const filtered = articlesCache.filter((article) => {
+      const targetText = `${article.title} ${article.author} ${article.keywords || ''}`.toLowerCase();
+      return targetText.includes(query);
+    });
+
+    if (!searchResults) return;
+
+    if (filtered.length === 0) {
+      searchResults.innerHTML = `<p class="search-hint">No articles found matching "${query}"</p>`;
+      return;
+    }
+
+    searchResults.innerHTML = filtered.map(art => `
+      <div class="result-card-item">
+        <a href="${art.url}">
+          <div class="result-title" title="${art.title}">${art.title}</div>
+          <div class="result-meta">Author: <span class="author-name">${art.author}</span></div>
+        </a>
+      </div>
+    `).join('');
+  });
+</script>
+
+<style>
+  /* Full-width solid header */
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    border: none;
+    border-bottom: 1px solid rgb(20 20 20 / 10%);
+    border-radius: 0;
+    background: #ffffff;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  /* Main layout */
+  .header-inner {
+    width: 100%;
+    min-height: 70px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 24px;
+    padding: 10px 26px;
+  }
+
+  /* Brand styling with vertical logo centering */
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    justify-self: start;
+    gap: 11px;
+    min-width: 0;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .brand-logo {
+    width: 50px;
+    height: 50px;
+    display: block;
+    flex: 0 0 50px;
+    border-radius: 10px;
+    object-fit: contain;
+    padding: 5px;
+    box-sizing: border-box;
+  }
+
+  .brand-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .brand-wordmark {
+    font-family: var(--font-primary);
+    font-size: 23px;
+    font-weight: 600;
+    letter-spacing: 0.015em;
+    line-height: 1.1;
+    white-space: nowrap;
+    color: var(--color-text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .brand-tag {
+    margin-top: 1px;
+    color: var(--color-purple-muted, #625a7a);
+    font-family: var(--font-primary);
+    font-size: 16px;
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    line-height: 1.1;
+    text-transform: none;
+  }
+
+  /* Desktop navigation */
+  .main-nav {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(16px, 2.2vw, 30px);
+    min-width: 0;
+  }
+
+  .nav-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    padding-block: 8px;
+    color: var(--color-text);
+    font-family: var(--font-primary);
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.4;
+    text-decoration: none;
+    white-space: nowrap;
+    text-shadow: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 220ms ease;
+  }
+
+  .nav-link:hover,
+  .nav-link:focus-visible {
+    color: var(--color-primary);
+  }
+
+  .nav-link.active {
+    color: var(--color-primary);
+    font-weight: 500;
+  }
+
+  .nav-link:focus-visible,
+  .brand:focus-visible,
+  .search-button:focus-visible,
+  .try-button:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+
+  /* Header actions */
+  .header-actions {
+    display: flex;
+    align-items: center;
+    justify-self: end;
+    gap: 8px;
+  }
+
+  /* Search button matching action styles */
+  .search-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid rgb(20 20 20 / 12%);
+    border-radius: 50%;
+    background: #ffffff;
+    color: var(--color-text);
+    cursor: pointer;
+    transition:
+      background-color 220ms ease,
+      border-color 220ms ease,
+      box-shadow 220ms ease,
+      color 220ms ease;
+  }
+
+  .search-button:hover {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgb(18 18 18 / 6%);
+  }
+
+  .search-icon {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* Try button */
+  .try-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 40px;
+    padding: 9px 24px;
+    border: 1px solid rgb(20 20 20 / 12%);
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--color-text);
+    font-family: var(--font-primary);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+    white-space: nowrap;
+    text-shadow: none;
+    transition:
+      background-color 220ms ease,
+      border-color 220ms ease,
+      box-shadow 220ms ease,
+      color 220ms ease;
+  }
+
+  .try-button:hover {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgb(18 18 18 / 6%);
+  }
+
+  .try-button:active,
+  .search-button:active {
+    box-shadow: none;
+  }
+
+  /* Outbound icon styling & clean hover transition */
+  .outbound-icon {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 auto;
+    overflow: visible;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transform: translateY(-0.5px);
+    transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .try-button:hover .outbound-icon,
+  .try-button:focus-visible .outbound-icon {
+    transform: translate(2px, -2px);
+  }
+
+  /* Search Modal Dialog Styles (Larger & Card-based) */
+  .search-modal {
+    padding: 0;
+    border: none;
+    border-radius: 18px;
+    width: min(720px, 92vw);
+    background: #ffffff;
+    box-shadow: 0 24px 48px rgb(18 18 18 / 18%);
+    overflow: hidden;
+  }
+
+  .search-modal::backdrop {
+    background: rgba(18, 18, 18, 0.45);
+    backdrop-filter: blur(4px);
+  }
+
+  .modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 82vh;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 18px 24px;
+    border-bottom: 1px solid rgb(20 20 20 / 10%);
+  }
+
+  .search-icon-modal {
+    width: 22px;
+    height: 22px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: var(--color-text);
+    stroke-width: 2;
+  }
+
+  #search-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-family: var(--font-primary);
+    font-size: 17px;
+    color: var(--color-text);
+    background: transparent;
+  }
+
+  #close-modal {
+    background: none;
+    border: none;
+    font-size: 26px;
+    cursor: pointer;
+    color: var(--color-text);
+    padding: 0 4px;
+  }
+
+  .search-results {
+    padding: 20px 24px;
+    overflow-y: auto;
+    min-height: 220px;
+    max-height: 55vh;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .search-hint {
+    color: #625a7a;
+    font-size: 14px;
+    text-align: center;
+    margin-top: 60px;
+  }
+
+  /* Result Card Styling */
+  .result-card-item {
+    border: 1px solid rgb(20 20 20 / 8%);
+    border-radius: 12px;
+    background: #faf9ff;
+    transition: border-color 200ms ease, background-color 200ms ease, box-shadow 200ms ease;
+  }
+
+  .result-card-item:hover {
+    border-color: var(--color-primary);
+    background: #ffffff;
+    box-shadow: 0 4px 14px rgb(118 84 214 / 10%);
+  }
+
+  .result-card-item a {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px 18px;
+    color: var(--color-text);
+    text-decoration: none;
+  }
+
+  .result-title {
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 1.35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 180ms ease;
+  }
+
+  .result-card-item a:hover .result-title {
+    color: var(--color-primary);
+  }
+
+  .result-meta {
+    font-size: 13px;
+    color: #625a7a;
+  }
+
+  .author-name {
+    font-weight: 500;
+    color: var(--color-text);
+  }
+
+  /* Smaller laptops and tablets */
+  @media (max-width: 1000px) {
+    .header-inner {
+      gap: 18px;
+      padding-inline: 20px;
+    }
+
+    .brand-wordmark {
+      font-size: 21px;
+    }
+
+    .brand-tag {
+      font-size: 15px;
+    }
+
+    .brand {
+      gap: 9px;
+    }
+
+    .brand-logo {
+      width: 44px;
+      height: 44px;
+      flex-basis: 44px;
+    }
+
+    .main-nav {
+      gap: 16px;
+    }
+
+    .nav-link {
+      font-size: 14px;
+    }
+
+    .try-button {
+      padding-inline: 20px;
+    }
+  }
+
+  /* Mobile header */
+  @media (max-width: 760px) {
+    .site-header {
+      top: 0;
+      width: 100%;
+      margin-top: 0;
+      border-radius: 0;
+    }
+
+    .header-inner {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px 16px;
+      padding: 12px 18px;
+    }
+
+    .brand-wordmark {
+      font-size: 20px;
+    }
+
+    .brand-tag {
+      font-size: 14px;
+    }
+
+    .header-actions {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .main-nav {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      justify-content: center;
+      gap: clamp(20px, 5vw, 30px);
+      min-width: 0;
+      margin-inline: -2px;
+      padding: 2px 2px 4px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .main-nav::-webkit-scrollbar {
+      display: none;
+    }
+
+    .nav-link {
+      padding-block: 7px;
+      font-size: 14px;
+    }
+
+    .try-button {
+      min-height: 38px;
+      padding: 9px 16px;
+      font-size: 14px;
+    }
+
+    .search-button {
+      width: 38px;
+      height: 38px;
+    }
+  }
+
+  /* Narrow phones */
+  @media (max-width: 380px) {
+    .site-header {
+      width: 100%;
+    }
+
+    .header-inner {
+      padding: 11px 13px;
+      gap: 10px 12px;
+    }
+
+    .brand {
+      gap: 8px;
+    }
+
+    .brand-logo {
+      width: 38px;
+      height: 38px;
+      flex-basis: 38px;
+      border-radius: 8px;
+    }
+
+    .brand-wordmark {
+      font-size: 18px;
+      letter-spacing: 0.005em;
+    }
+
+    .brand-tag {
+      font-size: 13px;
+    }
+
+    .try-button {
+      min-height: 36px;
+      padding-inline: 12px;
+      font-size: 13px;
+    }
+
+    .search-button {
+      width: 36px;
+      height: 36px;
+    }
+
+    .main-nav {
+      gap: 19px;
+    }
+
+    .nav-link {
+      font-size: 13px;
+    }
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .nav-link,
+    .try-button,
+    .search-button,
+    .outbound-icon {
+      transition: none;
+      transform: none;
+    }
+
+    .try-button:hover .outbound-icon {
+      transform: none;
+    }
+  }
+</style>

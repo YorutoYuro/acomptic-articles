@@ -1,0 +1,158 @@
+---
+import "../styles/global.css";
+import Header from "../components/Header.astro";
+import Footer from "../components/Footer.astro";
+
+interface Props {
+  title?: string;
+  description?: string;
+  canonicalURL?: string;
+  noindex?: boolean;
+  ogImage?: string;
+  ogImageAlt?: string;
+  ogType?: "website" | "article";
+  /** One or more JSON-LD (schema.org) objects for this page. */
+  schema?: Record<string, unknown> | Record<string, unknown>[];
+}
+
+const {
+  title = "Acomptic - Simple. Secure. Fast. Accounting Software",
+  description = "Acomptic is offline accounting software for small businesses in India. Create GST invoices, manage stock and payroll, and export GST reports.",
+  canonicalURL,
+  noindex = false,
+  ogImage = "/og-image.png",
+  ogImageAlt = "Acomptic - offline accounting software for small businesses in India",
+  ogType = "website",
+  schema,
+} = Astro.props;
+
+const siteName = "Acomptic";
+const siteURL = Astro.site ?? new URL("https://acomptic.com");
+
+// One clean canonical per page: no query string, always a trailing slash.
+const cleanPath = (() => {
+  const path = canonicalURL ?? Astro.url.pathname;
+  return path.endsWith("/") || path.includes(".") ? path : `${path}/`;
+})();
+
+const canonical = new URL(cleanPath, siteURL);
+const socialImage = new URL(ogImage, siteURL);
+
+const robots = noindex
+  ? "noindex, nofollow"
+  : "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1";
+
+const schemaItems = schema ? (Array.isArray(schema) ? schema : [schema]) : [];
+---
+
+<!doctype html>
+<html lang="en-IN">
+  <head>
+<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-PW4HJ4HT"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+</script>
+
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical.href} />
+    <meta name="robots" content={robots} />
+    <meta name="googlebot" content={robots} />
+
+    <meta name="application-name" content={siteName} />
+    <meta name="apple-mobile-web-app-title" content={siteName} />
+    <meta name="author" content={siteName} />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="theme-color" content="#ffffff" />
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="sitemap" type="application/xml" href="/sitemap-index.xml" />
+
+    <!-- Preload the fonts used above the fold -->
+    <link
+      rel="preload"
+      href="/fonts/Outfit-Medium.woff"
+      as="font"
+      type="font/woff"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/Outfit-SemiBold.woff"
+      as="font"
+      type="font/woff"
+      crossorigin
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content={ogType} />
+    <meta property="og:site_name" content={siteName} />
+    <meta property="og:locale" content="en_IN" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical.href} />
+    <meta property="og:image" content={socialImage.href} />
+    <meta property="og:image:alt" content={ogImageAlt} />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@acomptic" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={socialImage.href} />
+    <meta name="twitter:image:alt" content={ogImageAlt} />
+
+    <!-- Structured data -->
+    {
+      schemaItems.map((item) => (
+        <script
+          is:inline
+          type="application/ld+json"
+          set:html={JSON.stringify(item)}
+        />
+      ))
+    }
+
+    <slot name="head" />
+  </head>
+
+  <body>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <Header />
+
+    <main id="main-content">
+      <slot />
+    </main>
+
+    <Footer />
+  </body>
+</html>
+
+<style is:global>
+  /* Visible only when focused by keyboard users */
+  .skip-link {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 1000;
+    padding: 10px 18px;
+    border-radius: 999px;
+    background: var(--color-text);
+    color: var(--color-white);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transform: translateY(-200%);
+    transition: transform 180ms ease;
+  }
+
+  .skip-link:focus-visible {
+    transform: translateY(0);
+  }
+</style>

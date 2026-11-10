@@ -1,0 +1,718 @@
+
+/* =========================================================
+   1. OUTFIT FONT FAMILY
+   ========================================================= */
+
+@font-face {
+  font-family: "Outfit";
+  src: url("/fonts/Outfit-Thin.woff") format("woff");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Outfit";
+  src: url("/fonts/Outfit-ExtraLight.woff") format("woff");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Outfit";
+  src: url("/fonts/Outfit-Light.woff") format("woff");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Outfit";
+  src: url("/fonts/Outfit-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Outfit";
+  src: url("/fonts/Outfit-Medium.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Outfit";
+  src: url("/fonts/Outfit-SemiBold.woff") format("woff");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Outfit";
+  src: url("/fonts/Outfit-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Outfit";
+  src: url("/fonts/Outfit-ExtraBold.woff") format("woff");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Outfit";
+  src: url("/fonts/Outfit-Black.woff") format("woff");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+
+/* =========================================================
+   1.1. INTER PRICE FONT FAMILY
+   Normal weights only — prices and financial figures
+   ========================================================= */
+
+@font-face {
+  font-family: "InterPrice";
+  src: url("/fonts/Inter_24pt-Thin.woff") format("woff");
+  font-weight: 100;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "InterPrice";
+  src: url("/fonts/Inter_24pt-ExtraLight.woff") format("woff");
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "InterPrice";
+  src: url("/fonts/Inter_24pt-Light.woff") format("woff");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "InterPrice";
+  src: url("/fonts/Inter_24pt-Regular.woff") format("woff");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "InterPrice";
+  src: url("/fonts/Inter_24pt-Medium.woff") format("woff");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "InterPrice";
+  src: url("/fonts/Inter_24pt-SemiBold.woff") format("woff");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "InterPrice";
+  src: url("/fonts/Inter_24pt-Bold.woff") format("woff");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "InterPrice";
+  src: url("/fonts/Inter_24pt-ExtraBold.woff") format("woff");
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "InterPrice";
+  src: url("/fonts/Inter_24pt-Black.woff") format("woff");
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+
+/* =========================================================
+   2. DESIGN TOKENS
+   ========================================================= */
+
+:root {
+  --font-primary: "Outfit", sans-serif;
+
+  --color-primary: #a799ff;
+  --color-text: #121212;
+  --color-white: #ffffff;
+
+  --color-lavender-light: #edeaff;
+  --color-purple-muted: #625a7a;
+  --color-lavender-soft: #dbd6ff;
+
+  --color-red: #ef4444;
+  --color-green: #10b981;
+
+  --container-width: 1200px;
+  --page-gutter: 24px;
+
+  --radius-small: 4px;
+  --radius-medium: 8px;
+  --radius-large: 16px;
+
+  --transition-fast: 180ms ease;
+  --transition-medium: 300ms ease;
+
+  --button-lift-distance: 0px;
+  --button-radius: 999px;
+}
+
+
+/* =========================================================
+   3. RESET AND BASE STYLES
+   ========================================================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 100px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  font-family: var(--font-primary);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--color-text);
+  background: var(--color-white);
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+main,
+section,
+header,
+footer {
+  min-width: 0;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+img,
+video {
+  height: auto;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  max-width: 100%;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p {
+  margin-top: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+ul,
+ol {
+  padding-left: 1.5rem;
+}
+
+::selection {
+  color: var(--color-text);
+  background: var(--color-lavender-soft);
+}
+
+
+/* =========================================================
+   4. SHARED LAYOUT UTILITIES
+   ========================================================= */
+
+.container {
+  width: min(
+    calc(100% - var(--page-gutter) * 2),
+    var(--container-width)
+  );
+  margin-inline: auto;
+}
+
+.section {
+  padding-block: 80px;
+}
+
+.section-title {
+  margin-bottom: 20px;
+  font-size: clamp(28px, 4vw, 48px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+.text-muted {
+  color: var(--color-purple-muted);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.mx-auto {
+  margin-inline: auto;
+}
+
+.w-full {
+  width: 100%;
+}
+
+
+/* =========================================================
+   5. GLOBAL BUTTON SYSTEM
+   One category: .btn-custom
+
+   Set the normal and hover colors separately on each button.
+   Supports links, buttons, and other suitable elements.
+   ========================================================= */
+
+.btn-custom {
+  /* ---------- Normal state (matches the header Login button) ---------- */
+
+  --btn-bg: var(--color-white);
+  --btn-text: var(--color-text);
+  --btn-border: rgb(20 20 20 / 12%);
+  --btn-shadow: none;
+
+  /* ---------- Hover state ---------- */
+
+  --btn-hover-bg: var(--color-primary);
+  --btn-hover-text: var(--color-white);
+  --btn-hover-border: var(--color-primary);
+  --btn-hover-shadow: 0 4px 12px rgb(18 18 18 / 6%);
+
+  /* ---------- Shared button appearance ---------- */
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  min-height: 40px;
+  max-width: 100%;
+  padding: 9px 26px;
+
+  color: var(--btn-text);
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: var(--button-radius);
+  box-shadow: var(--btn-shadow);
+
+  font-family: var(--font-primary);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  text-shadow: none;
+
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    color 220ms ease;
+
+  /* Buttons never move; only colour and icons react. */
+  transform: none;
+}
+
+.btn-custom:hover,
+.btn-custom:focus-visible {
+  color: var(--btn-hover-text);
+  background: var(--btn-hover-bg);
+  border-color: var(--btn-hover-border);
+  box-shadow: var(--btn-hover-shadow);
+  transform: none;
+}
+
+.btn-custom:active {
+  transform: none;
+  box-shadow: var(--btn-active-shadow, none);
+}
+
+.btn-custom:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 4px;
+}
+
+.btn-custom:disabled,
+.btn-custom[disabled],
+.btn-custom[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Icons inside any button */
+
+.btn-custom svg {
+  display: block;
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+
+/* =========================================================
+   6. PER-BUTTON COLOR CONFIGURATION
+
+   These are examples of configurations, not separate
+   button categories. Every button still uses .btn-custom.
+   ========================================================= */
+
+
+/* Example A: Header Login-style button
+   White background and dark text normally.
+   Purple background and white text on hover. */
+
+.btn-login-style {
+  --btn-bg: var(--color-white);
+  --btn-text: var(--color-text);
+  --btn-border: rgb(20 20 20 / 12%);
+  --btn-shadow: none;
+
+  --btn-hover-bg: var(--color-primary);
+  --btn-hover-text: var(--color-white);
+  --btn-hover-border: var(--color-primary);
+  --btn-hover-shadow: 0 4px 12px rgb(18 18 18 / 6%);
+}
+
+
+/* Example B: Dark hover */
+
+.btn-dark-hover {
+  --btn-bg: var(--color-white);
+  --btn-text: var(--color-text);
+  --btn-border: rgb(20 20 20 / 12%);
+  --btn-shadow: none;
+
+  --btn-hover-bg: var(--color-text);
+  --btn-hover-text: var(--color-white);
+  --btn-hover-border: var(--color-text);
+  --btn-hover-shadow: 0 4px 12px rgb(18 18 18 / 6%);
+}
+
+
+/* Example C: Transparent button on a dark background */
+
+.btn-light-outline {
+  --btn-bg: transparent;
+  --btn-text: var(--color-white);
+  --btn-border: rgb(255 255 255 / 60%);
+  --btn-shadow: none;
+
+  --btn-hover-bg: var(--color-white);
+  --btn-hover-text: var(--color-text);
+  --btn-hover-border: var(--color-white);
+  --btn-hover-shadow: none;
+}
+
+
+/* Example D: Green hover */
+
+.btn-green-hover {
+  --btn-bg: var(--color-white);
+  --btn-text: var(--color-text);
+  --btn-border: rgb(20 20 20 / 12%);
+  --btn-shadow: none;
+
+  --btn-hover-bg: var(--color-green);
+  --btn-hover-text: var(--color-white);
+  --btn-hover-border: var(--color-green);
+  --btn-hover-shadow: 0 4px 12px rgb(16 185 129 / 18%);
+}
+
+
+/* Example E: Red hover */
+
+.btn-red-hover {
+  --btn-bg: var(--color-white);
+  --btn-text: var(--color-text);
+  --btn-border: rgb(20 20 20 / 12%);
+  --btn-shadow: none;
+
+  --btn-hover-bg: var(--color-red);
+  --btn-hover-text: var(--color-white);
+  --btn-hover-border: var(--color-red);
+  --btn-hover-shadow: 0 4px 12px rgb(239 68 68 / 18%);
+}
+
+
+/* =========================================================
+   7. OPTIONAL ICON ANIMATIONS
+   Button icon animations are opt-in.
+   Add the relevant class to the icon or SVG.
+   ========================================================= */
+
+
+/* Smooth movement for an arrow icon */
+
+.btn-icon-arrow {
+  transition: transform 220ms ease;
+}
+
+.btn-custom:hover .btn-icon-arrow {
+  transform: translateX(3px);
+}
+
+
+/* Download arrow drops into its tray */
+
+.btn-icon-download {
+  transition: transform 220ms ease;
+}
+
+.btn-custom:hover .btn-icon-download {
+  animation: btn-download-drop 500ms ease;
+}
+
+@keyframes btn-download-drop {
+  0% {
+    transform: translateY(0);
+  }
+
+  40% {
+    transform: translateY(4px);
+  }
+
+  70% {
+    transform: translateY(-1px);
+  }
+
+  100% {
+    transform: translateY(0);
+  }
+}
+
+
+/* Optional icon rotation */
+
+.btn-icon-rotate {
+  transition: transform 220ms ease;
+}
+
+.btn-custom:hover .btn-icon-rotate {
+  transform: rotate(12deg);
+}
+
+
+/* Optional icon scale */
+
+.btn-icon-scale {
+  transition: transform 220ms ease;
+}
+
+.btn-custom:hover .btn-icon-scale {
+  transform: scale(1.08);
+}
+
+
+/* =========================================================
+   8. SHARED LAYOUT AND ACCESSIBILITY
+   ========================================================= */
+
+:focus-visible {
+  outline-color: var(--color-primary);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+
+/* =========================================================
+   9. TABLET RESPONSIVE STYLES
+   ========================================================= */
+
+@media (max-width: 768px) {
+  :root {
+    --page-gutter: 20px;
+  }
+
+  .section {
+    padding-block: 60px;
+  }
+
+  .section-title {
+    margin-bottom: 16px;
+    font-size: clamp(26px, 5vw, 38px);
+  }
+
+  .btn-custom {
+    padding: 9px 20px;
+  }
+}
+
+
+/* =========================================================
+   10. SMALL PHONE RESPONSIVE STYLES
+   ========================================================= */
+
+@media (max-width: 480px) {
+  :root {
+    --page-gutter: 16px;
+  }
+
+  .section {
+    padding-block: 48px;
+  }
+
+  .section-title {
+    font-size: clamp(25px, 7vw, 32px);
+    letter-spacing: -0.02em;
+  }
+
+  .btn-custom {
+    min-height: 38px;
+    padding: 9px 18px;
+    font-size: 14px;
+  }
+}
+
+
+/* =========================================================
+   11. EXTRA-SMALL PHONE RESPONSIVE STYLES
+   ========================================================= */
+
+@media (max-width: 360px) {
+  :root {
+    --page-gutter: 14px;
+  }
+
+  .section {
+    padding-block: 40px;
+  }
+
+  .section-title {
+    font-size: 25px;
+  }
+
+  .btn-custom {
+    padding: 9px 14px;
+    font-size: 13px;
+  }
+}
+
+
+/* =========================================================
+   12. TOUCH DEVICES
+   Avoid hover shadows on touchscreens
+   ========================================================= */
+
+@media (hover: none) {
+  .btn-custom:hover {
+    box-shadow: var(--btn-shadow);
+  }
+
+  .btn-custom:active {
+    color: var(--btn-hover-text);
+    background: var(--btn-hover-bg);
+    border-color: var(--btn-hover-border);
+  }
+}
+
+
+/* =========================================================
+   13. REDUCED MOTION ACCESSIBILITY
+   ========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

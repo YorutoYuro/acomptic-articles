@@ -1,0 +1,347 @@
+---
+const footerLinks = [
+  { label: "Taxation", href: "/taxation/" },
+  { label: "Insights", href: "/insights/" },
+  { label: "Join Us", href: "/join/" },
+  { label: "Try Acomptic", href: "https://acomptic.com" },
+];
+
+const socialLinks = [
+  {
+    label: "LinkedIn",
+    href: "https://linkedin.com/company/acomptic",
+    icon: "linkedin",
+  },
+  {
+    label: "X",
+    href: "https://x.com/acomptic",
+    icon: "x",
+  },
+  {
+    label: "Instagram",
+    href: "https://instagram.com/acomptic",
+    icon: "instagram",
+  },
+  {
+    label: "YouTube",
+    href: "https://youtube.com/@acomptic",
+    icon: "youtube",
+  },
+  {
+    label: "Reddit",
+    href: "https://www.reddit.com/user/acomptic/",
+    icon: "reddit",
+  },
+];
+---
+
+<footer class="site-footer">
+  <div class="footer-inner container">
+    <nav class="footer-nav" aria-label="Footer navigation">
+      {footerLinks.map((link) => (
+        <a class="footer-link" href={link.href}>
+          {link.label}
+        </a>
+      ))}
+    </nav>
+
+    <div class="footer-right-col">
+      <nav class="social-nav" aria-label="Social media">
+        {socialLinks.map((social) => (
+          <a
+            class="social-link"
+            href={social.href}
+            aria-label={social.label}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <img
+              class="social-brand-image"
+              src={`/icons/social/${social.icon}.svg`}
+              alt=""
+              aria-hidden="true"
+              width="20"
+              height="20"
+              loading="lazy"
+            />
+          </a>
+        ))}
+      </nav>
+      <div class="made-in-india">
+        <span>Made with</span>
+        <svg
+          class="heart-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          aria-hidden="true"
+        >
+          <path
+            fill="currentColor"
+            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+          />
+        </svg>
+        <span>in India</span>
+      </div>
+    </div>
+
+    <span class="copyright">
+      © {new Date().getFullYear()} Acomptic. All rights reserved.
+    </span>
+  </div>
+</footer>
+
+<style>
+  .site-footer {
+    width: 100%;
+    background: var(--color-white);
+    border-top: 1px solid rgb(18 18 18 / 6%);
+  }
+
+  /* Desktop: links and copyright left, social icons right */
+  .footer-inner {
+    min-height: 112px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "links right-col"
+      "copyright right-col";
+    align-items: start;
+    column-gap: 28px;
+    row-gap: 14px;
+    padding-block: 28px;
+  }
+
+  .footer-nav {
+    grid-area: links;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    min-width: 0;
+    gap: 12px 24px;
+  }
+
+  .footer-link {
+    color: #121212;
+    font-family: var(--font-primary);
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 1.5;
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+
+  .footer-link:hover {
+    color: var(--color-primary);
+  }
+
+  .footer-right-col {
+    grid-area: right-col;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+  }
+
+  .social-nav {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    gap: 18px;
+  }
+
+  .social-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    color: #121212;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: color var(--transition-fast);
+  }
+
+  .social-link:hover {
+    color: var(--color-primary);
+    background: transparent;
+  }
+
+  /* Official brand marks, rendered at one consistent size. */
+  .social-link .social-brand-image {
+    display: block;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+    flex: 0 0 20px;
+    object-fit: contain;
+  }
+
+  .made-in-india {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #121212;
+    font-family: var(--font-primary);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  .heart-icon {
+    color: var(--color-error, #e53935);
+    flex-shrink: 0;
+  }
+
+  .copyright {
+    grid-area: copyright;
+    color: #121212;
+    font-family: var(--font-primary);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.5;
+    text-align: left;
+    align-self: center;
+  }
+
+  /* Keyboard accessibility */
+  .footer-link:focus-visible,
+  .social-link:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 4px;
+  }
+
+  /* Tablet */
+  @media (max-width: 1000px) {
+    .footer-inner {
+      column-gap: 20px;
+    }
+
+    .footer-nav {
+      gap: 12px 20px;
+    }
+
+    .social-nav {
+      gap: 12px;
+    }
+  }
+
+  /* Mobile: links first, social/made-in-india second, copyright last */
+  @media (max-width: 760px) {
+    .footer-inner.container {
+      display: flex;
+      flex-direction: column;
+      align-items: center !important;
+      justify-content: center;
+      gap: 20px;
+      width: 100%;
+      text-align: center !important;
+      padding-block: 30px;
+    }
+
+    .footer-nav {
+      display: flex;
+      width: 100%;
+      justify-content: center !important;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px 24px;
+      margin: 0 auto;
+      text-align: center !important;
+    }
+
+    .footer-right-col {
+      width: 100%;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .social-nav {
+      display: flex;
+      width: 100%;
+      justify-content: center !important;
+      align-self: center;
+      gap: 14px;
+      margin: 0 auto !important;
+    }
+
+    .made-in-india {
+      justify-content: center;
+    }
+
+    .copyright {
+      display: block;
+      width: 100%;
+      align-self: center;
+      margin: 0 auto !important;
+      text-align: center !important;
+    }
+  }
+
+  /* Small phones */
+  @media (max-width: 480px) {
+    .footer-inner.container {
+      gap: 18px;
+      padding-block: 26px;
+    }
+
+    .footer-nav {
+      gap: 12px 20px;
+    }
+
+    .footer-link {
+      font-size: 14px;
+    }
+
+    .social-nav {
+      gap: 12px;
+    }
+
+    .social-link {
+      width: 34px;
+      height: 34px;
+      flex-basis: 34px;
+    }
+
+    .made-in-india,
+    .copyright {
+      font-size: 13px;
+    }
+  }
+
+  /* Extra-small phones */
+  @media (max-width: 360px) {
+    .footer-nav {
+      gap: 12px 16px;
+    }
+
+    .footer-link {
+      font-size: 13px;
+    }
+
+    .made-in-india,
+    .copyright {
+      font-size: 12px;
+    }
+
+    .social-nav {
+      gap: 10px;
+    }
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .footer-link,
+    .social-link {
+      transition: none;
+    }
+  }
+</style>
