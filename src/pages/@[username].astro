@@ -1,37 +1,20 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { getCollection } from "astro:content";
 import authorsData from "../data/authors.json";
+import { getArticlesIndex } from "../utils/getArticlesIndex";
 
 export async function getStaticPaths() {
-  const allArticles = await getCollection("articles");
+  const allArticlesIndex = await getArticlesIndex();
   const pageSize = 10;
-  
   const paths = [];
 
   for (const [username, profile] of Object.entries(authorsData)) {
-    const authorArticles = allArticles
-      .filter((art) => {
-        const artAuthor = (art.data.author || "").trim().toLowerCase();
-        return artAuthor === username.toLowerCase();
-      })
-      .map((art) => {
-        const normalizedId = art.id.replace(/\\/g, "/");
-        const parts = normalizedId.split("/");
-        const category = parts.length > 1 ? parts[0] : "insights";
-        const rawSlug = parts.length > 1 ? parts.slice(1).join("/") : parts[0];
-        const slug = rawSlug.replace(/\.mdx?$/, "");
+    const cleanUsername = username.trim().toLowerCase();
 
-        return {
-          title: art.data.title,
-          excerpt: art.data.description || "",
-          date: art.data.date,
-          readTime: art.data.readTime || 4,
-          category,
-          url: `/${category}/${slug}`,
-        };
-      })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    // Match articles strictly where authorHandle equals the username key
+    const authorArticles = allArticlesIndex.filter(
+      (art) => art.authorHandle === cleanUsername || art.authorHandle === `@${cleanUsername}`
+    );
 
     const totalPages = Math.ceil(authorArticles.length / pageSize) || 1;
 
@@ -40,18 +23,18 @@ export async function getStaticPaths() {
       const paginatedArticles = authorArticles.slice(start, start + pageSize);
 
       // Page 1 maps to `/@username`, subsequent pages map to `/@username/2`, etc.
-      const routeParam = pageNum === 1 ? username : `${username}/${pageNum}`;
+      const routeParam = pageNum === 1 ? cleanUsername : `${cleanUsername}/${pageNum}`;
 
       paths.push({
         params: { username: routeParam },
         props: {
           profile,
-          username,
+          username: cleanUsername,
           articles: paginatedArticles,
           currentPage: pageNum,
           lastPage: totalPages,
           totalArticles: authorArticles.length,
-          baseUrl: `/@${username}`,
+          baseUrl: `/@${cleanUsername}`,
         },
       });
     }
@@ -93,13 +76,13 @@ const formatDate = (date: string) =>
           <!-- SOCIAL LINKS (Same Tab) -->
           <div class="author-socials">
             {profile.instagram && (
-              <a href={profile.instagram} class="social-link">Instagram</a>
+              <a href={profile.instagram} class="social-link" target="_self">Instagram</a>
             )}
             {profile.linkedin && (
-              <a href={profile.linkedin} class="social-link">LinkedIn</a>
+              <a href={profile.linkedin} class="social-link" target="_self">LinkedIn</a>
             )}
             {profile.x && (
-              <a href={profile.x} class="social-link">X (Twitter)</a>
+              <a href={profile.x} class="social-link" target="_self">X (Twitter)</a>
             )}
           </div>
         </div>
@@ -114,7 +97,7 @@ const formatDate = (date: string) =>
         {articles.length > 0 ? (
           <div class="topic-articles-list">
             {articles.map((art) => (
-              <a class="article-row" href={art.url}>
+              <a class="article-row" href={art.url} target="_self">
                 <div class="row-date">
                   <span>{formatDate(art.date)}</span>
                   <span>{art.readTime} min read</span>
@@ -142,7 +125,7 @@ const formatDate = (date: string) =>
         {lastPage > 1 && (
           <nav class="pagination-nav" aria-label="Author articles pagination">
             {currentPage > 1 ? (
-              <a href={currentPage === 2 ? baseUrl : `${baseUrl}/${currentPage - 1}`} class="pagination-link">← Previous</a>
+              <a href={currentPage === 2 ? baseUrl : `${baseUrl}/${currentPage - 1}`} class="pagination-link" target="_self">← Previous</a>
             ) : (
               <span class="pagination-link disabled">← Previous</span>
             )}
@@ -152,7 +135,7 @@ const formatDate = (date: string) =>
             </span>
 
             {currentPage < lastPage ? (
-              <a href={`${baseUrl}/${currentPage + 1}`} class="pagination-link">Next →</a>
+              <a href={`${baseUrl}/${currentPage + 1}`} class="pagination-link" target="_self">Next →</a>
             ) : (
               <span class="pagination-link disabled">Next →</span>
             )}
