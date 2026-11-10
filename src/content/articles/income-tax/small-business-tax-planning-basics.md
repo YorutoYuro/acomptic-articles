@@ -1,12 +1,14 @@
 ---
-title: "Small Business Tax Planning: Essential Basics for Indian Proprietorships"
+title: "Your Article Title Here"
 date: "2026-11-05"
-description: "Understand tax deductions, allowable business expenses, and proactive planning strategies to optimize your annual tax liability."
-readTime: 6
-author: "Acomptic Team"
-authorHandle: "@acomptic"
-authorUrl: "https://x.com/acomptic"
+description: "A short summary of your article that will show up on the index page."
+readTime: 5
+author: "John Doe"
+authorHandle: "@omkumawat"
+authorUrl: "https://articles.acomptic.com/@omkumawat"
 ---
+
+Your article content goes here...
 
 Proactive tax planning shouldn't happen at the very last week of the financial year. For small business owners and independent operators in India, structuring daily expenses correctly can make a substantial difference in taxable income.
 
