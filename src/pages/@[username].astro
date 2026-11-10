@@ -11,7 +11,6 @@ export async function getStaticPaths() {
   for (const [username, profile] of Object.entries(authorsData)) {
     const cleanUsername = username.trim().toLowerCase();
 
-    // Match articles strictly where authorHandle equals the username key
     const authorArticles = allArticlesIndex.filter(
       (art) => art.authorHandle === cleanUsername || art.authorHandle === `@${cleanUsername}`
     );
@@ -22,11 +21,11 @@ export async function getStaticPaths() {
       const start = (pageNum - 1) * pageSize;
       const paginatedArticles = authorArticles.slice(start, start + pageSize);
 
-      // Page 1 maps to `/@username`, subsequent pages map to `/@username/2`, etc.
-      const routeParam = pageNum === 1 ? cleanUsername : `${cleanUsername}/${pageNum}`;
-
       paths.push({
-        params: { username: routeParam },
+        params: { 
+          username: cleanUsername, 
+          page: pageNum === 1 ? undefined : String(pageNum) 
+        },
         props: {
           profile,
           username: cleanUsername,
@@ -57,7 +56,6 @@ const formatDate = (date: string) =>
   <main class="author-profile-page">
     <div class="articles-container">
       
-      <!-- AUTHOR PROFILE CARD -->
       <header class="author-header">
         <div class="author-avatar-wrap">
           {profile.avatar ? (
@@ -73,22 +71,20 @@ const formatDate = (date: string) =>
           </div>
           <p class="author-desc">{profile.description}</p>
 
-          <!-- SOCIAL LINKS (Opens in a new tab) -->
-<div class="author-socials">
-  {profile.instagram && (
-    <a href={profile.instagram} class="social-link" target="_blank" rel="noopener noreferrer">Instagram</a>
-  )}
-  {profile.linkedin && (
-    <a href={profile.linkedin} class="social-link" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-  )}
-  {profile.x && (
-    <a href={profile.x} class="social-link" target="_blank" rel="noopener noreferrer">X (Twitter)</a>
-  )}
-</div>
+          <div class="author-socials">
+            {profile.instagram && (
+              <a href={profile.instagram} class="social-link" target="_blank" rel="noopener noreferrer">Instagram</a>
+            )}
+            {profile.linkedin && (
+              <a href={profile.linkedin} class="social-link" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            )}
+            {profile.x && (
+              <a href={profile.x} class="social-link" target="_blank" rel="noopener noreferrer">X (Twitter)</a>
+            )}
+          </div>
         </div>
       </header>
 
-      <!-- AUTHOR ARTICLES LISTING -->
       <section class="author-articles-section">
         <div class="section-title">
           <h2>Articles by {profile.name} <span>({totalArticles})</span></h2>
@@ -121,7 +117,6 @@ const formatDate = (date: string) =>
           </div>
         )}
 
-        <!-- PAGINATION CONTROLS -->
         {lastPage > 1 && (
           <nav class="pagination-nav" aria-label="Author articles pagination">
             {currentPage > 1 ? (
