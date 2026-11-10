@@ -5,7 +5,6 @@ import { getCollection } from "astro:content";
 const siteURL = "https://articles.acomptic.com";
 const mainSiteURL = "https://acomptic.com";
 
-// Category display metadata mapping
 const categoryMeta: Record<string, { name: string; description: string }> = {
   insights: {
     name: "Insights",
@@ -45,7 +44,7 @@ const allArticles = rawArticles.map((article) => {
 
 // 3. SORT ALL ARTICLES BY DATE (NEWEST FIRST)
 const sortedArticles = [...allArticles].sort(
-  (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
 );
 
 // 4. HERO SECTION: LATEST 10 ARTICLES FROM 'INSIGHTS' ONLY
@@ -61,7 +60,7 @@ const otherCategoryKeys = Array.from(
 const categorySections = otherCategoryKeys.map((catKey) => {
   const articlesInCat = sortedArticles
     .filter((a) => a.category === catKey)
-    .slice(0, 3); // Top 3 latest articles
+    .slice(0, 3);
 
   const meta = categoryMeta[catKey] || {
     name: catKey.toUpperCase().replace("-", " "),
@@ -123,17 +122,14 @@ const schema = [
   schema={schema}
 >
   <main class="articles-page">
-    
-    <!-- HERO / LATEST 10 INSIGHTS CAROUSEL -->
+    <!-- HERO / LATEST INSIGHTS CAROUSEL -->
     <section class="articles-hero" aria-label="Latest insights">
       <div class="articles-container">
         {insightArticles.length > 0 ? (
           <div class="insights-carousel" data-insights-carousel>
-            {insightArticles.length > 1 && (
-              <button class="carousel-arrow carousel-prev" type="button" aria-label="Previous insight" data-carousel-prev>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
-              </button>
-            )}
+            <button class="carousel-arrow carousel-prev" type="button" aria-label="Previous insight" data-carousel-prev>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
+            </button>
             <div class="carousel-viewport" data-carousel-viewport aria-live="polite">
               <div class="carousel-track" data-carousel-track>
                 {insightArticles.map((article, index) => (
@@ -166,11 +162,9 @@ const schema = [
                 ))}
               </div>
             </div>
-            {insightArticles.length > 1 && (
-              <button class="carousel-arrow carousel-next" type="button" aria-label="Next insight" data-carousel-next>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
-              </button>
-            )}
+            <button class="carousel-arrow carousel-next" type="button" aria-label="Next insight" data-carousel-next>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            </button>
           </div>
         ) : (
           <div class="empty-feature">
@@ -181,7 +175,7 @@ const schema = [
       </div>
     </section>
 
-    <!-- CATEGORIES (GST, INCOME TAX, ETC. - LATEST 3 EACH) -->
+    <!-- CATEGORY LATEST ARTICLES -->
     <section class="latest-sections" aria-label="Latest articles by category">
       <div class="articles-container">
         <div class="section-intro">
@@ -249,7 +243,7 @@ const schema = [
   document.querySelectorAll<HTMLElement>("[data-insights-carousel]").forEach((carousel) => {
     const track = carousel.querySelector<HTMLElement>("[data-carousel-track]");
     const originalSlides = Array.from(
-      carousel.querySelectorAll<HTMLElement>("[data-carousel-slide]")
+      carousel.querySelectorAll<HTMLElement>("[data-carousel-slide]"),
     );
     const previous = carousel.querySelector<HTMLButtonElement>("[data-carousel-prev]");
     const next = carousel.querySelector<HTMLButtonElement>("[data-carousel-next]");
@@ -257,11 +251,12 @@ const schema = [
     if (!track || originalSlides.length === 0) return;
 
     if (originalSlides.length === 1) {
-      previous?.remove();
-      next?.remove();
+      previous?.style.setProperty("display", "none");
+      next?.style.setProperty("display", "none");
       return;
     }
 
+    // Clone the ends for seamless infinite looping
     const firstClone = originalSlides[0].cloneNode(true) as HTMLElement;
     const lastClone = originalSlides[originalSlides.length - 1].cloneNode(true) as HTMLElement;
 
@@ -295,8 +290,8 @@ const schema = [
       track.style.transition = animate
         ? "transform 460ms cubic-bezier(.22, .75, .25, 1)"
         : "none";
-      const slideWidth = carousel.querySelector<HTMLElement>(".carousel-viewport")?.clientWidth ?? 0;
-      track.style.transform = `translate3d(-${activeIndex * slideWidth}px, 0, 0)`;
+      const viewportWidth = carousel.querySelector<HTMLElement>(".carousel-viewport")?.clientWidth ?? 0;
+      track.style.transform = `translate3d(-${activeIndex * viewportWidth}px, 0, 0)`;
 
       originalSlides.forEach((slide, index) => {
         const isActive = index === activeIndex - 1;
@@ -376,7 +371,7 @@ const schema = [
     margin-inline: auto;
   }
 
-  /* Featured Hero Carousel */
+  /* Featured insight */
   .articles-hero {
     padding: 58px 0 48px;
     background: var(--color-white, #fff);
@@ -410,7 +405,7 @@ const schema = [
     flex: 0 0 auto;
     min-width: 0;
     box-sizing: border-box;
-    padding: 12px 8px 18px;
+    padding: 4px;
   }
 
   .carousel-arrow {
@@ -424,7 +419,13 @@ const schema = [
     background: var(--color-white, #fff);
     color: var(--color-primary, #7654d6);
     cursor: pointer;
-    transition: background-color 240ms ease, color 240ms ease, border-color 240ms ease, transform 240ms ease;
+    transition:
+      background-color 240ms cubic-bezier(.2, .7, .2, 1),
+      color 240ms cubic-bezier(.2, .7, .2, 1),
+      border-color 240ms cubic-bezier(.2, .7, .2, 1),
+      box-shadow 240ms cubic-bezier(.2, .7, .2, 1),
+      transform 240ms cubic-bezier(.2, .7, .2, 1);
+    -webkit-tap-highlight-color: transparent;
   }
 
   .carousel-arrow svg {
@@ -436,7 +437,24 @@ const schema = [
     border-color: var(--color-primary, #7654d6);
     background: var(--color-primary, #7654d6);
     color: var(--color-white, #fff);
+    box-shadow: 0 5px 14px color-mix(in srgb, var(--color-primary, #7654d6) 18%, transparent);
   }
+
+  .carousel-arrow:focus-visible {
+    border-color: var(--color-primary, #7654d6);
+    outline: 3px solid color-mix(in srgb, var(--color-primary, #7654d6) 24%, transparent);
+    outline-offset: 3px;
+  }
+
+  .carousel-arrow:active {
+    transform: scale(.94);
+  }
+
+  .carousel-prev:hover { transform: translateX(-2px) scale(1.04); }
+  .carousel-next:hover { transform: translateX(2px) scale(1.04); }
+
+  .carousel-prev:hover svg { transform: translateX(-1px); }
+  .carousel-next:hover svg { transform: translateX(1px); }
 
   .latest-feature {
     position: relative;
@@ -457,6 +475,13 @@ const schema = [
     border-color: var(--color-primary, #7654d6);
     box-shadow: 0 6px 22px rgb(36 25 72 / 6%);
     outline: none;
+  }
+
+  .feature-content,
+  .feature-copy {
+    display: block;
+    width: 100%;
+    max-width: none;
   }
 
   .feature-kicker {
@@ -502,6 +527,7 @@ const schema = [
     flex-wrap: wrap;
     align-items: center;
     gap: 9px;
+    margin: 0;
     color: var(--color-purple-muted, #625d6b);
     font-size: .84rem;
   }
@@ -524,35 +550,73 @@ const schema = [
     border: 1px solid var(--color-purple-border, #e5dcff);
     border-radius: 50%;
     background: var(--color-white, #fff);
-    transition: background-color 240ms ease, border-color 240ms ease, color 240ms ease;
+    transition:
+      color 240ms cubic-bezier(.2, .7, .2, 1),
+      background-color 240ms cubic-bezier(.2, .7, .2, 1),
+      border-color 240ms cubic-bezier(.2, .7, .2, 1),
+      box-shadow 240ms cubic-bezier(.2, .7, .2, 1),
+      transform 240ms cubic-bezier(.2, .7, .2, 1);
   }
 
   .text-link-arrow svg {
     width: 15px;
     height: 15px;
+    color: currentColor;
   }
 
-  .latest-feature:hover .text-link-arrow {
+  .latest-feature:hover .text-link-arrow,
+  .latest-feature:focus-visible .text-link-arrow {
     border-color: var(--color-primary, #7654d6);
     background: var(--color-primary, #7654d6);
     color: var(--color-white, #fff);
+    transform: translateX(2px);
   }
 
-  /* Category List Below Hero */
+  .empty-feature,
+  .empty-topic {
+    padding: 28px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 12px;
+    color: var(--color-purple-muted, #625d6b);
+  }
+
+  .empty-feature h2 {
+    margin: 0 0 6px;
+    color: var(--color-ink, #121212);
+  }
+
+  .empty-feature p {
+    margin: 0;
+  }
+
+  /* Latest by category */
   .latest-sections {
     padding: 64px 0 80px;
   }
 
+  .section-intro {
+    margin-bottom: 20px;
+  }
+
   .section-intro h2 {
-    margin: 0 0 20px;
+    margin: 0;
     font-size: clamp(1.6rem, 2.5vw, 2rem);
     font-weight: 650;
     letter-spacing: -.035em;
+    line-height: 1.2;
   }
 
   .topic-section {
     padding: 26px 0 30px;
     border-top: 1px solid var(--color-border, #e9e7ef);
+  }
+
+  .topic-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 16px;
   }
 
   .topic-heading h3 {
@@ -563,8 +627,8 @@ const schema = [
     letter-spacing: -.03em;
   }
 
-  .topic-heading p {
-    margin: 5px 0 18px;
+  .topic-heading p:not(.topic-eyebrow) {
+    margin: 5px 0 0;
     color: var(--color-purple-muted, #625d6b);
     font-size: .92rem;
   }
@@ -609,6 +673,7 @@ const schema = [
     color: var(--color-ink, #121212);
     font-size: clamp(1.1rem, 2vw, 1.35rem);
     font-weight: 650;
+    letter-spacing: -.025em;
     line-height: 1.4;
   }
 
@@ -632,21 +697,37 @@ const schema = [
     border: 1px solid var(--color-border, #e9e7ef);
     border-radius: 50%;
     color: var(--color-primary, #7654d6);
-    transition: background-color 240ms ease, border-color 240ms ease, color 240ms ease;
   }
 
   .row-action svg {
     width: 17px;
     height: 17px;
+    transition: transform 240ms cubic-bezier(.2, .7, .2, 1);
   }
 
-  .article-row:hover .row-action {
+  .article-row .row-action {
+    transition:
+      color 240ms cubic-bezier(.2, .7, .2, 1),
+      background-color 240ms cubic-bezier(.2, .7, .2, 1),
+      border-color 240ms cubic-bezier(.2, .7, .2, 1),
+      box-shadow 240ms cubic-bezier(.2, .7, .2, 1),
+      transform 240ms cubic-bezier(.2, .7, .2, 1);
+  }
+
+  .article-row:hover .row-action,
+  .article-row:focus-visible .row-action {
     border-color: var(--color-primary, #7654d6);
     background: var(--color-primary, #7654d6);
     color: var(--color-white, #fff);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--color-primary, #7654d6) 16%, transparent);
   }
 
-  /* Bottom CTA */
+  .article-row:hover .row-action svg,
+  .article-row:focus-visible .row-action svg {
+    transform: translateX(3px);
+  }
+
+  /* Existing CTA card retained */
   .articles-cta {
     padding: 0 0 88px;
   }
@@ -668,6 +749,7 @@ const schema = [
     margin: 0;
     font-size: clamp(1.75rem, 3vw, 2.5rem);
     font-weight: 700;
+    letter-spacing: -.045em;
     line-height: 1.15;
   }
 
@@ -685,27 +767,150 @@ const schema = [
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 10px;
+    min-height: 48px;
     padding: 12px 25px;
     border: 1px solid var(--color-primary, #7654d6);
     border-radius: 999px;
     background: var(--color-primary, #7654d6);
     color: var(--color-white, #fff);
+    font: inherit;
     font-size: .96rem;
     font-weight: 650;
     text-decoration: none;
     white-space: nowrap;
+    transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  }
+
+  .articles-btn:hover,
+  .articles-btn:focus-visible {
+    border-color: var(--color-primary-hover, #5f3fc0);
+    background: var(--color-primary-hover, #5f3fc0);
+    box-shadow: 0 5px 14px color-mix(in srgb, var(--color-primary, #7654d6) 22%, transparent);
+    outline: none;
+    transform: translateY(-1px);
   }
 
   @media (max-width: 700px) {
     .articles-container {
       width: calc(100% - 32px);
     }
+
+    .articles-hero {
+      padding: 38px 0 34px;
+    }
+
+    .insights-carousel {
+      grid-template-columns: 36px minmax(0, 1fr) 36px;
+      gap: 8px;
+    }
+
+    .carousel-viewport {
+      border-radius: 12px;
+    }
+
+    .carousel-arrow {
+      width: 36px;
+      height: 36px;
+    }
+
+    .carousel-arrow svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .latest-feature {
+      padding: 26px 21px;
+      border-radius: 12px;
+    }
+
+    .feature-kicker {
+      margin-bottom: 16px;
+    }
+
+    .feature-copy h2 {
+      font-size: clamp(1.8rem, 8vw, 2.45rem);
+    }
+
+    .feature-excerpt {
+      margin-top: 15px;
+      font-size: .97rem;
+    }
+
+    .feature-bottom {
+      align-items: center;
+      flex-direction: row;
+      gap: 12px;
+      margin-top: 24px;
+      padding-top: 18px;
+    }
+
+    .text-link {
+      gap: 8px;
+      font-size: .86rem;
+      white-space: nowrap;
+    }
+
+    .text-link-arrow {
+      width: 27px;
+      height: 27px;
+    }
+
+    .latest-sections {
+      padding: 46px 0 56px;
+    }
+
     .article-row {
       grid-template-columns: minmax(0, 1fr) 36px;
+      gap: 14px;
+      padding: 20px 17px;
     }
+
     .row-date {
       grid-column: 1 / -1;
       flex-direction: row;
+      gap: 9px;
+    }
+
+    .row-copy {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    .row-action {
+      width: 36px;
+      height: 36px;
+      grid-column: 2;
+      grid-row: 2;
+    }
+
+    .topic-heading {
+      margin-bottom: 14px;
+    }
+
+    .articles-cta {
+      padding-bottom: 56px;
+    }
+
+    .articles-btn {
+      width: fit-content;
+      max-width: 100%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .carousel-track,
+    .carousel-arrow,
+    .carousel-arrow svg,
+    .latest-feature,
+    .text-link-arrow,
+    .article-row,
+    .row-action,
+    .row-action svg,
+    .articles-btn {
+      transition: none !important;
+      transform: none !important;
+      scroll-behavior: auto !important;
     }
   }
 </style>
