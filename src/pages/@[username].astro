@@ -1,0 +1,327 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { getCollection } from "astro:content";
+import authorsData from "../../data/authors.json";
+
+export async function getStaticPaths() {
+  const allArticles = await getCollection("articles");
+  
+  return Object.entries(authorsData).map(([username, profile]) => {
+    const authorArticles = allArticles
+      .filter((art) => {
+        const artAuthor = (art.data.author || "").toLowerCase().trim();
+        return artAuthor === username.toLowerCase();
+      })
+      .map((art) => {
+        const normalizedId = art.id.replace(/\\/g, "/");
+        const parts = normalizedId.split("/");
+        const category = parts.length > 1 ? parts[0] : "insights";
+        const rawSlug = parts.length > 1 ? parts.slice(1).join("/") : parts[0];
+        const slug = rawSlug.replace(/\.mdx?$/, "");
+
+        return {
+          title: art.data.title,
+          excerpt: art.data.description || "",
+          date: art.data.date,
+          readTime: art.data.readTime || 4,
+          category,
+          url: `/${category}/${slug}`,
+        };
+      })
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return {
+      params: { username },
+      props: { profile, articles: authorArticles, username },
+    };
+  });
+}
+
+const { profile, articles, username } = Astro.props;
+
+const formatDate = (date: string) =>
+  new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+---
+
+<Layout title={`${profile.name} (@${username}) - Acomptic`}>
+  <main class="author-profile-page">
+    <div class="articles-container">
+      
+      <!-- AUTHOR PROFILE CARD -->
+      <header class="author-header">
+        <div class="author-avatar-wrap">
+          {profile.avatar ? (
+            <img class="author-avatar" src={profile.avatar} alt={profile.name} />
+          ) : (
+            <div class="author-avatar-placeholder">{profile.name.charAt(0)}</div>
+          )}
+        </div>
+        <div class="author-info">
+          <div class="author-title-row">
+            <h1>{profile.name}</h1>
+            <span class="author-handle">@{username}</span>
+          </div>
+          <p class="author-desc">{profile.description}</p>
+
+          <!-- INSTAGRAM, LINKEDIN & X SOCIAL LINKS -->
+          <div class="author-socials">
+            {profile.instagram && (
+              <a href={profile.instagram} target="_blank" rel="noopener noreferrer" class="social-link">
+                Instagram
+              </a>
+            )}
+            {profile.linkedin && (
+              <a href={profile.linkedin} target="_blank" rel="noopener noreferrer" class="social-link">
+                LinkedIn
+              </a>
+            )}
+            {profile.x && (
+              <a href={profile.x} target="_blank" rel="noopener noreferrer" class="social-link">
+                X (Twitter)
+              </a>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <!-- AUTHOR ARTICLES LISTING -->
+      <section class="author-articles-section">
+        <div class="section-title">
+          <h2>Articles by {profile.name} <span>({articles.length})</span></h2>
+        </div>
+
+        {articles.length > 0 ? (
+          <div class="topic-articles-list">
+            {articles.map((art) => (
+              <a class="article-row" href={art.url}>
+                <div class="row-date">
+                  <span>{formatDate(art.date)}</span>
+                  <span>{art.readTime} min read</span>
+                  <span class="row-category">{art.category.toUpperCase()}</span>
+                </div>
+                <div class="row-copy">
+                  <h4>{art.title}</h4>
+                  <p>{art.excerpt}</p>
+                </div>
+                <span class="row-action" aria-label="Read article">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </span>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div class="empty-state">
+            <p>No articles published yet by {profile.name}.</p>
+          </div>
+        )}
+      </section>
+
+    </div>
+  </main>
+</Layout>
+
+<style>
+  .author-profile-page {
+    background: var(--color-white, #fff);
+    color: var(--color-ink, #121212);
+    padding: 56px 0 88px;
+  }
+
+  .articles-container {
+    width: min(1160px, calc(100% - 64px));
+    margin-inline: auto;
+  }
+
+  /* Header Section */
+  .author-header {
+    display: flex;
+    gap: 32px;
+    align-items: flex-start;
+    padding-bottom: 40px;
+    border-bottom: 1px solid var(--color-border, #e9e7ef);
+  }
+
+  .author-avatar {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--color-purple-border, #e5dcff);
+  }
+
+  .author-avatar-placeholder {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: var(--color-primary, #7654d6);
+    color: #fff;
+    font-size: 2.2rem;
+    font-weight: 700;
+    display: grid;
+    place-items: center;
+  }
+
+  .author-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .author-title-row h1 {
+    margin: 0;
+    font-size: 2.1rem;
+    font-weight: 700;
+    letter-spacing: -.03em;
+  }
+
+  .author-handle {
+    color: var(--color-purple-muted, #625d6b);
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .author-desc {
+    margin: 8px 0 16px;
+    color: var(--color-purple-muted, #625d6b);
+    max-width: 680px;
+    line-height: 1.65;
+    font-size: .98rem;
+  }
+
+  .author-socials {
+    display: flex;
+    gap: 10px;
+  }
+
+  .social-link {
+    display: inline-flex;
+    padding: 6px 14px;
+    border: 1px solid var(--color-purple-border, #e5dcff);
+    border-radius: 999px;
+    color: var(--color-primary, #7654d6);
+    font-size: .82rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 180ms ease;
+  }
+
+  .social-link:hover {
+    background: var(--color-primary, #7654d6);
+    color: #fff;
+    border-color: var(--color-primary, #7654d6);
+  }
+
+  /* Articles Listing */
+  .author-articles-section {
+    padding-top: 40px;
+  }
+
+  .section-title h2 {
+    margin: 0 0 24px;
+    font-size: 1.5rem;
+    font-weight: 680;
+    letter-spacing: -.03em;
+  }
+
+  .section-title span {
+    color: var(--color-purple-muted, #625d6b);
+    font-weight: 500;
+  }
+
+  .topic-articles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .article-row {
+    display: grid;
+    grid-template-columns: 168px minmax(0, 1fr) 42px;
+    gap: 26px;
+    align-items: center;
+    padding: 22px 26px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 15px;
+    background: var(--color-white, #fff);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 200ms ease, box-shadow 200ms ease;
+  }
+
+  .article-row:hover {
+    border-color: var(--color-purple-border, #d9ccff);
+    box-shadow: 0 8px 24px rgba(36, 25, 72, 0.055);
+  }
+
+  .row-date {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .8rem;
+  }
+
+  .row-category {
+    color: var(--color-primary, #7654d6);
+    font-weight: 700;
+    font-size: .74rem;
+  }
+
+  .row-copy h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 650;
+  }
+
+  .row-copy p {
+    margin: 6px 0 0;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .9rem;
+  }
+
+  .row-action {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 50%;
+    color: var(--color-primary, #7654d6);
+  }
+
+  .row-action svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+
+  .empty-state {
+    padding: 36px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 15px;
+    color: var(--color-purple-muted, #625d6b);
+  }
+
+  @media (max-width: 760px) {
+    .author-header {
+      flex-direction: column;
+      gap: 20px;
+    }
+    .article-row {
+      grid-template-columns: minmax(0, 1fr) 36px;
+    }
+    .row-date {
+      grid-column: 1 / -1;
+      flex-direction: row;
+      gap: 12px;
+    }
+  }
+</style>
