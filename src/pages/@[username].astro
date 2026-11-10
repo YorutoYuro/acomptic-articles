@@ -1,16 +1,12 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { getCollection } from "astro:content";
-// Fix the relative depth from 3 dots to 2 dots:
-import authorsData from "../data/authors.json"; 
----
+import authorsData from "../data/authors.json";
 
 export async function getStaticPaths({ paginate }) {
   const allArticles = await getCollection("articles");
   
-  // Flatten and process all authors
   return Object.entries(authorsData).flatMap(([username, profile]) => {
-    // 1. Filter articles strictly by @username and sort newest to oldest
     const authorArticles = allArticles
       .filter((art) => {
         const artAuthor = (art.data.author || "").trim().toLowerCase();
@@ -34,10 +30,6 @@ export async function getStaticPaths({ paginate }) {
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    // 2. Paginate the articles (10 items per page)
-    // This automatically creates routes:
-    // - /@username (Page 1)
-    // - /@username/2 (Page 2), etc.
     return paginate(authorArticles, {
       params: { username },
       pageSize: 10,
@@ -46,7 +38,6 @@ export async function getStaticPaths({ paginate }) {
   });
 }
 
-// Astro's paginate function passes page data via `Astro.props.page`
 const { page, profile, username } = Astro.props;
 const articles = page.data;
 
@@ -331,7 +322,6 @@ const formatDate = (date: string) =>
     color: var(--color-purple-muted, #625d6b);
   }
 
-  /* Pagination Styling */
   .pagination-nav {
     display: flex;
     justify-content: space-between;
