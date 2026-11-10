@@ -254,7 +254,13 @@ const schema = [
     const previous = carousel.querySelector<HTMLButtonElement>("[data-carousel-prev]");
     const next = carousel.querySelector<HTMLButtonElement>("[data-carousel-next]");
 
-    if (!track || originalSlides.length < 2) return;
+    if (!track || originalSlides.length === 0) return;
+
+    if (originalSlides.length === 1) {
+      previous?.remove();
+      next?.remove();
+      return;
+    }
 
     const firstClone = originalSlides[0].cloneNode(true) as HTMLElement;
     const lastClone = originalSlides[originalSlides.length - 1].cloneNode(true) as HTMLElement;
@@ -279,8 +285,8 @@ const schema = [
       const viewport = carousel.querySelector<HTMLElement>(".carousel-viewport");
       if (!viewport) return;
       const width = viewport.clientWidth;
-      track.querySelectorAll<HTMLElement>(".carousel-slide").forEach((slide) => {
-        slide.style.width = `${width}px`;
+      track.querySelectorAll<HTMLElement>(".carousel-slide, .carousel-track > div:not([data-carousel-slide])").forEach((slide) => {
+        (slide as HTMLElement).style.width = `${width}px`;
       });
     };
 
@@ -289,8 +295,7 @@ const schema = [
       track.style.transition = animate
         ? "transform 460ms cubic-bezier(.22, .75, .25, 1)"
         : "none";
-      const activeSlide = track.querySelector<HTMLElement>(".carousel-slide");
-      const slideWidth = activeSlide?.getBoundingClientRect().width ?? 0;
+      const slideWidth = carousel.querySelector<HTMLElement>(".carousel-viewport")?.clientWidth ?? 0;
       track.style.transform = `translate3d(-${activeIndex * slideWidth}px, 0, 0)`;
 
       originalSlides.forEach((slide, index) => {
@@ -318,7 +323,11 @@ const schema = [
     previous?.addEventListener("click", () => move(-1));
     next?.addEventListener("click", () => move(1));
 
-    window.addEventListener("resize", () => setPosition(false));
+    let resizeTimer: number;
+    window.addEventListener("resize", () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => setPosition(false), 100);
+    });
 
     track.addEventListener("transitionend", (event) => {
       if (event.target !== track || event.propertyName !== "transform") return;
@@ -334,7 +343,7 @@ const schema = [
       isMoving = false;
     });
 
-    setPosition(false);
+    setTimeout(() => setPosition(false), 50);
   });
 </script>
 
@@ -379,15 +388,14 @@ const schema = [
     grid-template-columns: 44px minmax(0, 1fr) 44px;
     align-items: center;
     gap: 16px;
+    width: 100%;
   }
 
   .carousel-viewport {
     min-width: 0;
     width: 100%;
     overflow: hidden;
-    isolation: isolate;
-    padding: 0;
-    margin: 0;
+    position: relative;
     border-radius: 18px;
   }
 
@@ -434,6 +442,7 @@ const schema = [
     position: relative;
     display: block;
     overflow: hidden;
+    width: 100%;
     padding: clamp(30px, 5vw, 58px);
     border: 1px solid var(--color-border, #e9e7ef);
     border-radius: 12px;
