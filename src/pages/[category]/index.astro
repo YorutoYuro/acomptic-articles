@@ -1,0 +1,1023 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { getArticlesIndex } from "../../utils/getArticlesIndex";
+
+export async function getStaticPaths() {
+  const allArticlesIndex = await getArticlesIndex();
+  const categoriesMap = new Map<string, typeof allArticlesIndex>();
+
+  for (const art of allArticlesIndex) {
+    const rawCategory = art.category ? art.category.trim().toLowerCase() : "";
+    if (!rawCategory) continue;
+
+    if (!categoriesMap.has(rawCategory)) {
+      categoriesMap.set(rawCategory, []);
+    }
+    categoriesMap.get(rawCategory)!.push(art);
+  }
+
+  const paths = [];
+  for (const [category, articles] of categoriesMap.entries()) {
+    paths.push({
+      params: {
+        category,
+      },
+      props: {
+        categoryName: category.charAt(0).toUpperCase() + category.slice(1),
+        categorySlug: category,
+        articles,
+        totalArticles: articles.length,
+      },
+    });
+  }
+
+  return paths;
+}
+
+const PAGE_SIZE = 10;
+const { categoryName, categorySlug, articles, totalArticles } = Astro.props;
+
+// Other sibling categories with counts for filter chips / navigation
+const categoryMap = new Map<string, number>();
+for (const art of articles) {
+  const key = String(art.category || "").toLowerCase();
+  if (key) categoryMap.set(key, (categoryMap.get(key) || 0) + 1);
+}
+
+const sortOptions = [
+  { value: "relevance", label: "Best match" },
+  { value: "newest", label: "Newest first" },
+  { value: "oldest", label: "Oldest first" },
+  { value: "shortest", label: "Shortest read" },
+  { value: "longest", label: "Longest read" },
+];
+
+const formatDate = (date: string) =>
+  new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+---
+
+<Layout title={`${categoryName} Articles - Acomptic`}>
+  <main class="category-page">
+    <div class="articles-container">
+
+      <!-- CATEGORY HEADER -->
+      <header class="category-header">
+        <div class="category-title-block">
+          <h1>{categoryName}</h1>
+          <p class="category-desc">
+            Explore all official articles, guides, and insights filed under {categoryName}.
+          </p>
+        </div>
+      </header>
+
+      <section class="category-articles-section">
+        <div class="section-title">
+          <h2>Articles in {categoryName} <span>({totalArticles})</span></h2>
+        </div>
+
+        {totalArticles > 0 && (
+          <div class="category-search" role="search">
+            <div class="search-field">
+              <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3.5-3.5" />
+              </svg>
+              <input
+                id="category-search-input"
+                type="search"
+                placeholder={`Search ${categoryName} articles…`}
+                autocomplete="off"
+                spellcheck="false"
+                aria-label={`Search articles in ${categoryName}`}
+              />
+              <kbd class="search-kbd" id="search-kbd" aria-hidden="true">/</kbd>
+              <button type="button" id="search-clear" class="search-clear" aria-label="Clear search" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </div>
+
+            <div class="search-controls">
+              <div class="sort-wrap">
+                <span class="sort-label" id="sort-label">Sort</span>
+                <div class="dropdown" id="sort-dropdown">
+                  <button
+                    type="button"
+                    class="dropdown-trigger"
+                    id="sort-trigger"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-labelledby="sort-label sort-current"
+                  >
+                    <span id="sort-current">Newest first</span>
+                    <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                  </button>
+
+                  <ul class="dropdown-menu" id="sort-menu" role="listbox" aria-labelledby="sort-label" hidden>
+                    {sortOptions.map((opt) => (
+                      <li
+                        class="dropdown-option"
+                        role="option"
+                        tabindex="-1"
+                        data-value={opt.value}
+                        aria-selected={opt.value === "newest" ? "true" : "false"}
+                      >
+                        <span>{opt.label}</span>
+                        <svg class="check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <p class="search-hint">
+              Tip: use "quotes" for an exact phrase and -word to exclude a word. Small typos are forgiven.
+            </p>
+          </div>
+        )}
+
+        <p id="results-status" class="results-status" aria-live="polite"></p>
+
+        {articles.length > 0 ? (
+          <div class="topic-articles-list" id="articles-list" data-page-size={PAGE_SIZE}>
+            {articles.map((art, i) => (
+              <a
+                class="article-row"
+                href={art.url}
+                target="_self"
+                hidden={i >= PAGE_SIZE}
+                data-category={String(art.category || "").toLowerCase()}
+                data-date={art.date}
+                data-read={art.readTime}
+              >
+                <div class="row-date">
+                  <span>{formatDate(art.date)}</span>
+                  <span>{art.readTime} min read</span>
+                  <span class="row-author">By @{art.authorHandle || "acomptic"}</span>
+                </div>
+                <div class="row-copy">
+                  <h4>{art.title}</h4>
+                  <p>{art.excerpt}</p>
+                </div>
+                <span class="row-action" aria-label="Read article">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </span>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div class="empty-state">
+            <p>No articles found in {categoryName}.</p>
+          </div>
+        )}
+
+        <div class="empty-state no-results" id="no-results" hidden>
+          <p>No articles match your search.</p>
+          <button type="button" id="no-results-clear" class="pagination-link">Clear search</button>
+        </div>
+
+        {totalArticles > PAGE_SIZE && (
+          <div class="load-more-wrap" id="load-more-wrap">
+            <button type="button" id="load-more" class="pagination-link">Load more</button>
+          </div>
+        )}
+      </section>
+
+    </div>
+  </main>
+</Layout>
+
+<script>
+  const list = document.getElementById("articles-list");
+
+  if (list) {
+    const PAGE = Number(list.dataset.pageSize) || 10;
+
+    const input = document.getElementById("category-search-input") as HTMLInputElement | null;
+    const clearBtn = document.getElementById("search-clear") as HTMLButtonElement | null;
+    const kbd = document.getElementById("search-kbd");
+    const statusEl = document.getElementById("results-status");
+    const noResults = document.getElementById("no-results");
+    const noResultsClear = document.getElementById("no-results-clear");
+    const loadMoreWrap = document.getElementById("load-more-wrap");
+    const loadMoreBtn = document.getElementById("load-more") as HTMLButtonElement | null;
+
+    // custom sort dropdown
+    const dropdown = document.getElementById("sort-dropdown");
+    const sortTrigger = document.getElementById("sort-trigger") as HTMLButtonElement | null;
+    const sortMenu = document.getElementById("sort-menu") as HTMLElement | null;
+    const sortCurrent = document.getElementById("sort-current");
+    const sortOptionEls = sortMenu
+      ? Array.from(sortMenu.querySelectorAll<HTMLElement>(".dropdown-option"))
+      : [];
+
+    // ---------- text helpers ----------
+    const norm = (s: string) =>
+      s
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^\p{L}\p{N}\s]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    function within(a: string, b: string, max: number) {
+      if (Math.abs(a.length - b.length) > max) return false;
+      let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+      for (let i = 1; i <= a.length; i++) {
+        const curr = [i];
+        let rowMin = i;
+        for (let j = 1; j <= b.length; j++) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          const v = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+          curr[j] = v;
+          if (v < rowMin) rowMin = v;
+        }
+        if (rowMin > max) return false;
+        prev = curr;
+      }
+      return prev[b.length] <= max;
+    }
+
+    // ---------- index built from rendered rows ----------
+    const records = Array.from(list.querySelectorAll<HTMLElement>(".article-row")).map((el, i) => {
+      const titleEl = el.querySelector("h4") as HTMLElement;
+      const excerptEl = el.querySelector(".row-copy p") as HTMLElement;
+      const title = titleEl?.textContent ?? "";
+      const excerpt = excerptEl?.textContent ?? "";
+      const category = el.dataset.category ?? "";
+      const nTitle = norm(title);
+      const nExcerpt = norm(excerpt);
+      return {
+        el,
+        i,
+        titleEl,
+        excerptEl,
+        title,
+        excerpt,
+        category,
+        date: el.dataset.date ?? "",
+        read: Number(el.dataset.read) || 0,
+        nTitle,
+        nExcerpt,
+        nCat: norm(category),
+        wTitle: nTitle.split(" ").filter(Boolean),
+        wExcerpt: nExcerpt.split(" ").filter(Boolean),
+      };
+    });
+
+    type Rec = (typeof records)[number];
+
+    function parseQuery(raw: string) {
+      const phrases: string[] = [];
+      const excluded: string[] = [];
+      const terms: string[] = [];
+
+      const rest = raw.replace(/(-?)"([^"]+)"/g, (_m, neg: string, p: string) => {
+        const n = norm(p);
+        if (n) (neg ? excluded : phrases).push(n);
+        return " ";
+      });
+
+      rest.split(/\s+/).forEach((tok) => {
+        if (!tok) return;
+        if (tok.startsWith("-") && tok.length > 1) {
+          const n = norm(tok.slice(1));
+          if (n) excluded.push(n);
+        } else {
+          norm(tok)
+            .split(" ")
+            .forEach((w) => w && terms.push(w));
+        }
+      });
+
+      return { phrases, excluded, terms };
+    }
+
+    function scoreTerm(r: Rec, t: string) {
+      let s = 0;
+      if (r.wTitle.includes(t)) s += 12;
+      else if (r.wTitle.some((w) => w.startsWith(t))) s += 9;
+      else if (r.nTitle.includes(t)) s += 6;
+
+      if (r.nCat.includes(t)) s += 5;
+
+      if (r.wExcerpt.includes(t)) s += 4;
+      else if (r.wExcerpt.some((w) => w.startsWith(t))) s += 3;
+      else if (r.nExcerpt.includes(t)) s += 1.5;
+
+      if (s === 0 && t.length >= 4) {
+        const max = t.length >= 8 ? 2 : 1;
+        if (r.wTitle.some((w) => within(w, t, max))) s += 4;
+        else if (r.wExcerpt.some((w) => within(w, t, max))) s += 2;
+      }
+      return s;
+    }
+
+    function scoreRecord(r: Rec, q: ReturnType<typeof parseQuery>): number | null {
+      for (const ex of q.excluded) {
+        if (r.nTitle.includes(ex) || r.nExcerpt.includes(ex) || r.nCat.includes(ex)) return null;
+      }
+
+      let total = 0;
+      for (const p of q.phrases) {
+        if (r.nTitle.includes(p)) total += 15;
+        else if (r.nExcerpt.includes(p)) total += 8;
+        else if (r.nCat.includes(p)) total += 6;
+        else return null;
+      }
+
+      for (const t of q.terms) {
+        const s = scoreTerm(r, t);
+        if (s === 0) return null;
+        total += s;
+      }
+
+      return total;
+    }
+
+    function highlight(el: HTMLElement, text: string, re: RegExp | null) {
+      el.textContent = "";
+      if (!re) {
+        el.textContent = text;
+        return;
+      }
+      let last = 0;
+      for (const m of text.matchAll(re)) {
+        const idx = m.index ?? 0;
+        if (idx > last) el.append(text.slice(last, idx));
+        const mark = document.createElement("mark");
+        mark.textContent = m[0];
+        el.append(mark);
+        last = idx + m[0].length;
+      }
+      if (last < text.length) el.append(text.slice(last));
+    }
+
+    let query = "";
+    let sortValue = "newest";
+    let userSorted = false;
+    let shown = PAGE;
+    let debounceTimer: number | undefined;
+
+    const SORT_MODES = ["relevance", "newest", "oldest", "shortest", "longest"];
+
+    const params = new URLSearchParams(location.search);
+    query = params.get("q") ?? "";
+    const urlSort = params.get("sort");
+    if (urlSort && SORT_MODES.includes(urlSort)) {
+      sortValue = urlSort;
+      userSorted = true;
+    }
+    if (input) input.value = query;
+
+    function syncUrl() {
+      const p = new URLSearchParams();
+      if (query.trim()) p.set("q", query.trim());
+      if (userSorted) p.set("sort", sortValue);
+      const qs = p.toString();
+      history.replaceState(null, "", location.pathname + (qs ? `?${qs}` : ""));
+    }
+
+    function sortResults(items: { r: Rec; score: number }[], mode: string) {
+      const byDateDesc = (a: Rec, b: Rec) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.i - b.i);
+      items.sort((x, y) => {
+        switch (mode) {
+          case "relevance":
+            return y.score - x.score || byDateDesc(x.r, y.r);
+          case "oldest":
+            return -byDateDesc(x.r, y.r);
+          case "shortest":
+            return x.r.read - y.r.read || byDateDesc(x.r, y.r);
+          case "longest":
+            return y.r.read - x.r.read || byDateDesc(x.r, y.r);
+          default:
+            return byDateDesc(x.r, y.r);
+        }
+      });
+    }
+
+    function updateSortUI(mode: string, hasQuery: boolean) {
+      sortOptionEls.forEach((opt) => {
+        const val = opt.dataset.value;
+        const selected = val === mode;
+        opt.setAttribute("aria-selected", String(selected));
+        opt.classList.toggle("is-selected", selected);
+
+        if (val === "relevance") {
+          opt.setAttribute("aria-disabled", String(!hasQuery));
+          opt.classList.toggle("is-disabled", !hasQuery);
+        }
+        if (selected && sortCurrent) {
+          sortCurrent.textContent = opt.querySelector("span")?.textContent ?? "";
+        }
+      });
+    }
+
+    const enabledOptions = () => sortOptionEls.filter((o) => o.getAttribute("aria-disabled") !== "true");
+
+    function openMenu() {
+      if (!sortMenu || !sortTrigger) return;
+      sortMenu.hidden = false;
+      sortTrigger.setAttribute("aria-expanded", "true");
+      dropdown?.classList.add("is-open");
+      const target = sortOptionEls.find((o) => o.getAttribute("aria-selected") === "true") ?? enabledOptions()[0];
+      target?.focus();
+    }
+
+    function closeMenu(returnFocus = false) {
+      if (!sortMenu || !sortTrigger) return;
+      sortMenu.hidden = true;
+      sortTrigger.setAttribute("aria-expanded", "false");
+      dropdown?.classList.remove("is-open");
+      if (returnFocus) sortTrigger.focus();
+    }
+
+    function chooseOption(opt: HTMLElement) {
+      if (opt.getAttribute("aria-disabled") === "true") return;
+      sortValue = opt.dataset.value ?? "newest";
+      userSorted = true;
+      shown = PAGE;
+      syncUrl();
+      render();
+      closeMenu(true);
+    }
+
+    sortTrigger?.addEventListener("click", () => {
+      if (sortMenu?.hidden) openMenu();
+      else closeMenu();
+    });
+
+    sortTrigger?.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        openMenu();
+      }
+    });
+
+    sortMenu?.addEventListener("click", (e) => {
+      const opt = (e.target as HTMLElement).closest<HTMLElement>(".dropdown-option");
+      if (opt) chooseOption(opt);
+    });
+
+    sortMenu?.addEventListener("keydown", (e) => {
+      const opts = enabledOptions();
+      const idx = opts.indexOf(document.activeElement as HTMLElement);
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        opts[(idx + 1) % opts.length]?.focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        opts[(idx - 1 + opts.length) % opts.length]?.focus();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        closeMenu(true);
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (dropdown && !dropdown.contains(e.target as Node)) closeMenu();
+    });
+
+    function render() {
+      const q = parseQuery(query);
+      const hasQuery = q.phrases.length + q.terms.length + q.excluded.length > 0;
+
+      let mode = userSorted ? sortValue : hasQuery ? "relevance" : "newest";
+      if (mode === "relevance" && !hasQuery) mode = "newest";
+      updateSortUI(mode, hasQuery);
+
+      const matched: { r: Rec; score: number }[] = [];
+      for (const r of records) {
+        if (!hasQuery) {
+          matched.push({ r, score: 0 });
+          continue;
+        }
+        const s = scoreRecord(r, q);
+        if (s !== null) matched.push({ r, score: s });
+      }
+
+      sortResults(matched, mode);
+
+      const hlTerms = [...q.phrases, ...q.terms].filter(Boolean).sort((a, b) => b.length - a.length);
+      const re = hlTerms.length ? new RegExp(`(${hlTerms.map(escapeRe).join("|")})`, "gi") : null;
+
+      const matchedSet = new Set(matched.map((m) => m.r));
+      const frag = document.createDocumentFragment();
+
+      matched.forEach(({ r }, idx) => {
+        highlight(r.titleEl, r.title, re);
+        highlight(r.excerptEl, r.excerpt, re);
+        r.el.hidden = idx >= shown;
+        frag.appendChild(r.el);
+      });
+
+      records.forEach((r) => {
+        if (!matchedSet.has(r)) {
+          r.el.hidden = true;
+          frag.appendChild(r.el);
+        }
+      });
+
+      list.appendChild(frag);
+
+      const total = matched.length;
+      const visible = Math.min(shown, total);
+
+      if (statusEl) {
+        if (total === 0) {
+          statusEl.textContent = "";
+        } else if (hasQuery) {
+          statusEl.textContent =
+            `${total} ${total === 1 ? "article" : "articles"} found` +
+            (total > visible ? ` · showing ${visible}` : "");
+        } else {
+          statusEl.textContent = `Showing ${visible} of ${total} articles`;
+        }
+      }
+
+      list.hidden = total === 0;
+      if (noResults) noResults.hidden = total !== 0;
+
+      if (loadMoreWrap && loadMoreBtn) {
+        const remaining = total - visible;
+        loadMoreWrap.hidden = remaining <= 0;
+        loadMoreBtn.textContent = `Load more (${remaining} remaining)`;
+      }
+
+      if (clearBtn) clearBtn.hidden = !query;
+      if (kbd) kbd.hidden = !!query;
+    }
+
+    function resetAll() {
+      query = "";
+      userSorted = false;
+      sortValue = "newest";
+      shown = PAGE;
+      if (input) input.value = "";
+      syncUrl();
+      render();
+    }
+
+    input?.addEventListener("input", () => {
+      window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
+        query = input.value;
+        shown = PAGE;
+        syncUrl();
+        render();
+      }, 100);
+    });
+
+    clearBtn?.addEventListener("click", () => {
+      if (input) input.value = "";
+      query = "";
+      shown = PAGE;
+      syncUrl();
+      render();
+      input?.focus();
+    });
+
+    noResultsClear?.addEventListener("click", resetAll);
+
+    loadMoreBtn?.addEventListener("click", () => {
+      shown += PAGE;
+      render();
+    });
+
+    render();
+  }
+</script>
+
+<style>
+  .category-page {
+    background: var(--color-white, #fff);
+    color: var(--color-ink, #121212);
+    padding: 56px 0 88px;
+  }
+
+  .articles-container {
+    width: min(1160px, calc(100% - 64px));
+    margin-inline: auto;
+  }
+
+  .category-header {
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--color-border, #e9e7ef);
+    margin-bottom: 40px;
+  }
+
+  .category-title-block h1 {
+    margin: 0;
+    font-size: 2.3rem;
+    font-weight: 750;
+    letter-spacing: -.03em;
+    line-height: 1.2;
+    text-transform: capitalize;
+  }
+
+  .category-desc {
+    margin: 10px 0 0;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: 1.02rem;
+  }
+
+  .section-title h2 {
+    margin: 0 0 24px;
+    font-size: 1.5rem;
+    font-weight: 680;
+    letter-spacing: -.03em;
+  }
+
+  .section-title span {
+    color: var(--color-purple-muted, #625d6b);
+    font-weight: 500;
+  }
+
+  /* Search & Controls */
+  .category-search {
+    margin-bottom: 20px;
+  }
+
+  .search-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 18px;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: var(--color-purple-muted, #625d6b);
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: none;
+  }
+
+  #category-search-input {
+    width: 100%;
+    padding: 15px 56px 15px 48px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 14px;
+    background: var(--color-white, #fff);
+    color: inherit;
+    font: inherit;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+  }
+
+  #category-search-input:focus {
+    border-color: var(--color-primary, #7654d6);
+    box-shadow: 0 0 0 4px rgba(118, 84, 214, 0.12);
+  }
+
+  .search-kbd {
+    position: absolute;
+    right: 16px;
+    min-width: 24px;
+    padding: 2px 7px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 6px;
+    background: #faf9fd;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .78rem;
+    font-weight: 600;
+  }
+
+  .search-kbd[hidden],
+  .search-clear[hidden] {
+    display: none;
+  }
+
+  .search-clear {
+    position: absolute;
+    right: 10px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-purple-muted, #625d6b);
+    cursor: pointer;
+  }
+
+  .search-clear:hover {
+    background: #f1edfb;
+  }
+
+  .search-clear svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+
+  .search-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    margin-top: 14px;
+  }
+
+  .sort-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sort-label {
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .85rem;
+    font-weight: 600;
+  }
+
+  .dropdown {
+    position: relative;
+  }
+
+  .dropdown-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 150px;
+    justify-content: space-between;
+    padding: 8px 14px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 10px;
+    background: var(--color-white, #fff);
+    color: var(--color-ink, #121212);
+    font: inherit;
+    font-size: .88rem;
+    font-weight: 600;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  .dropdown-trigger:hover {
+    border-color: var(--color-purple-border, #d9ccff);
+  }
+
+  .dropdown-trigger:focus-visible,
+  .dropdown.is-open .dropdown-trigger {
+    border-color: var(--color-primary, #7654d6);
+    box-shadow: 0 0 0 4px rgba(118, 84, 214, 0.12);
+  }
+
+  .chev {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: var(--color-primary, #7654d6);
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transition: transform 180ms ease;
+  }
+
+  .dropdown.is-open .chev {
+    transform: rotate(180deg);
+  }
+
+  .dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 30;
+    min-width: 100%;
+    width: max-content;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 14px;
+    background: var(--color-white, #fff);
+    box-shadow: 0 16px 40px rgba(36, 25, 72, 0.12);
+  }
+
+  .dropdown-menu[hidden] {
+    display: none;
+  }
+
+  .dropdown-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 9px 12px;
+    border-radius: 9px;
+    color: var(--color-ink, #121212);
+    font-size: .88rem;
+    font-weight: 550;
+    cursor: pointer;
+  }
+
+  .dropdown-option:hover,
+  .dropdown-option:focus-visible {
+    background: rgba(118, 84, 214, 0.08);
+    color: var(--color-primary, #7654d6);
+  }
+
+  .dropdown-option.is-selected {
+    color: var(--color-primary, #7654d6);
+    font-weight: 700;
+  }
+
+  .dropdown-option .check {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: var(--color-primary, #7654d6);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+  }
+
+  .dropdown-option.is-selected .check {
+    opacity: 1;
+  }
+
+  .search-hint {
+    margin: 12px 0 0;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .8rem;
+    opacity: .85;
+  }
+
+  .results-status {
+    margin: 0 0 14px;
+    min-height: 1.2em;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .88rem;
+    font-weight: 500;
+  }
+
+  .row-copy :global(mark) {
+    background: rgba(118, 84, 214, 0.16);
+    color: inherit;
+    padding: 0 2px;
+    border-radius: 3px;
+  }
+
+  .topic-articles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .topic-articles-list[hidden] {
+    display: none;
+  }
+
+  .article-row {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr) 42px;
+    gap: 26px;
+    align-items: center;
+    padding: 22px 26px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 15px;
+    background: var(--color-white, #fff);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 200ms ease, box-shadow 200ms ease;
+  }
+
+  .article-row[hidden] {
+    display: none;
+  }
+
+  .article-row:hover {
+    border-color: var(--color-purple-border, #d9ccff);
+    box-shadow: 0 8px 24px rgba(36, 25, 72, 0.055);
+  }
+
+  .row-date {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .8rem;
+  }
+
+  .row-author {
+    color: var(--color-primary, #7654d6);
+    font-weight: 600;
+  }
+
+  .row-copy h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 650;
+  }
+
+  .row-copy p {
+    margin: 6px 0 0;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .9rem;
+  }
+
+  .row-action {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 50%;
+    color: var(--color-primary, #7654d6);
+  }
+
+  .row-action svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+
+  .empty-state {
+    padding: 36px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 15px;
+    color: var(--color-purple-muted, #625d6b);
+  }
+
+  .no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .no-results[hidden] {
+    display: none;
+  }
+
+  .load-more-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 36px;
+    padding-top: 24px;
+    border-top: 1px solid var(--color-border, #e9e7ef);
+  }
+
+  .load-more-wrap[hidden] {
+    display: none;
+  }
+
+  .pagination-link {
+    padding: 8px 16px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--color-primary, #7654d6);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: .9rem;
+    cursor: pointer;
+    transition: all 180ms ease;
+  }
+
+  .pagination-link:hover {
+    background: var(--color-primary, #7654d6);
+    color: #fff;
+    border-color: var(--color-primary, #7654d6);
+  }
+
+  @media (max-width: 760px) {
+    .articles-container {
+      width: calc(100% - 32px);
+    }
+    .article-row {
+      grid-template-columns: minmax(0, 1fr) 36px;
+    }
+    .row-date {
+      grid-column: 1 / -1;
+      flex-direction: row;
+      gap: 12px;
+    }
+    .search-kbd {
+      display: none;
+    }
+  }
+</style>
