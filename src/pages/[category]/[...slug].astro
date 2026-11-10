@@ -1,14 +1,17 @@
 ---
 // src/pages/[category]/[...slug].astro
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 
 export async function getStaticPaths() {
   const articles = await getCollection('articles');
   
   return articles.map((article) => {
-    const parts = article.id.split('/');
+    const normalizedId = article.id.replace(/\\/g, '/');
+    const parts = normalizedId.split('/');
+    
     const category = parts.length > 1 ? parts[0] : 'general';
-    const slug = parts.length > 1 ? parts.slice(1).join('/') : parts[0];
+    const rawSlug = parts.length > 1 ? parts.slice(1).join('/') : parts[0];
+    const slug = rawSlug.replace(/\.mdx?$/, '');
 
     return {
       params: { category, slug },
@@ -18,7 +21,7 @@ export async function getStaticPaths() {
 }
 
 const { article } = Astro.props;
-const { Content } = await article.render();
+const { Content } = await render(article);
 ---
 
 <!DOCTYPE html>
