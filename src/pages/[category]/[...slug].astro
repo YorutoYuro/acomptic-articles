@@ -3,13 +3,16 @@
 import { getCollection, render } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 
+// 1. Generate static paths for every article across all category folders
 export async function getStaticPaths() {
   const articles = await getCollection('articles');
   
   return articles.map((article) => {
+    // Normalize path separators for cross-platform compatibility (Windows / Linux)
     const normalizedId = article.id.replace(/\\/g, '/');
     const parts = normalizedId.split('/');
     
+    // Extract folder name as category, and file name as slug
     const category = parts.length > 1 ? parts[0] : 'general';
     const rawSlug = parts.length > 1 ? parts.slice(1).join('/') : parts[0];
     const slug = rawSlug.replace(/\.mdx?$/, '');
@@ -21,26 +24,49 @@ export async function getStaticPaths() {
   });
 }
 
+// 2. Extract article props and render markdown content
 const { article } = Astro.props;
 const { Content } = await render(article);
+
+const categoryName = Astro.params.category;
+const formattedCategory = categoryName.charAt(0).toUpperCase() + categoryName.slice(1);
 ---
 
-<Layout title={`${article.data.title} | Acomptic`}>
-  <main style="max-width: 800px; margin: 40px auto; padding: 0 20px;">
-    <header style="margin-bottom: 32px; padding-bottom: 20px; border-bottom: 1px solid #E5E7EB;">
-      <div style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #FC642D; margin-bottom: 8px;">
-        {Astro.params.category}
-      </div>
-      <h1 style="font-size: 36px; font-weight: 700; line-height: 1.2; margin: 0 0 12px 0;">
-        {article.data.title}
-      </h1>
-      <p style="font-size: 14px; color: #6B7280; margin: 0;">
-        Published on {article.data.date}
-      </p>
-    </header>
+<Layout title={`${article.data.title} | Acomptic Articles`}>
+  <div style="background-color: #FAFAFA; min-height: 100vh; padding: 40px 0 80px 0;">
+    <main style="max-width: 760px; margin: 0 auto; padding: 0 24px; background: #ffffff; border: 1px solid #E5E7EB; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+      
+      <!-- Article Breadcrumb & Category Bar -->
+      <nav style="padding-top: 32px; font-size: 13px; color: #6B7280; display: flex; align-items: center; gap: 8px;">
+        <a href="/" style="color: #6B7280; text-decoration: none;">Home</a>
+        <span>/</span>
+        <a href={`/${categoryName}`} style="color: #FC642D; text-decoration: none; font-weight: 500; text-transform: uppercase;">
+          {formattedCategory}
+        </a>
+      </nav>
 
-    <article style="font-size: 17px; line-height: 1.7;">
-      <Content />
-    </article>
-  </main>
+      <!-- Article Header -->
+      <header style="margin-top: 16px; margin-bottom: 36px; padding-bottom: 24px; border-bottom: 1px solid #E5E7EB;">
+        <h1 style="font-size: 38px; font-weight: 700; line-height: 1.2; margin: 0 0 16px 0; color: #121212; letter-spacing: -0.01em;">
+          {article.data.title}
+        </h1>
+        
+        <div style="display: flex; align-items: center; gap: 16px; font-size: 14px; color: #6B7280;">
+          <span>Published on {article.data.date}</span>
+          {article.data.description && (
+            <>
+              <span>•</span>
+              <span style="color: #4B5563;">{article.data.description}</span>
+            </>
+          )}
+        </div>
+      </header>
+
+      <!-- Rendered Markdown Body -->
+      <article class="article-body" style="font-size: 17px; line-height: 1.75; color: #2D3748; padding-bottom: 48px;">
+        <Content />
+      </article>
+
+    </main>
+  </div>
 </Layout>
