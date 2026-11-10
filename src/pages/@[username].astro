@@ -1,13 +1,14 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { getCollection } from "astro:content";
-import authorsData from "../data/authors.json";
+import authorsData from "../../data/authors.json";
 
-export async function getStaticPaths() {
+export async function getStaticPaths({ paginate }) {
   const allArticles = await getCollection("articles");
   
-  return Object.entries(authorsData).map(([username, profile]) => {
-    // STRICT COMPARISON: Matches art.data.author directly against the JSON key (username)
+  // Flatten and process all authors
+  return Object.entries(authorsData).flatMap(([username, profile]) => {
+    // 1. Filter articles strictly by @username and sort newest to oldest
     const authorArticles = allArticles
       .filter((art) => {
         const artAuthor = (art.data.author || "").trim().toLowerCase();
@@ -31,14 +32,21 @@ export async function getStaticPaths() {
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    return {
+    // 2. Paginate the articles (10 items per page)
+    // This automatically creates routes:
+    // - /@username (Page 1)
+    // - /@username/2 (Page 2), etc.
+    return paginate(authorArticles, {
       params: { username },
-      props: { profile, articles: authorArticles, username },
-    };
+      pageSize: 10,
+      props: { profile, username },
+    });
   });
 }
 
-const { profile, articles, username } = Astro.props;
+// Astro's paginate function passes page data via `Astro.props.page`
+const { page, profile, username } = Astro.props;
+const articles = page.data;
 
 const formatDate = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
@@ -48,7 +56,7 @@ const formatDate = (date: string) =>
   });
 ---
 
-<Layout title={`${profile.name} (@${username}) - Acomptic`}>
+<Layout title={`${profile.name} (@${username}) - Page ${page.currentPage} - Acomptic`}>
   <main class="author-profile-page">
     <div class="articles-container">
       
@@ -86,7 +94,7 @@ const formatDate = (date: string) =>
       <!-- AUTHOR ARTICLES LISTING -->
       <section class="author-articles-section">
         <div class="section-title">
-          <h2>Articles by {profile.name} <span>({articles.length})</span></h2>
+          <h2>Articles by {profile.name} <span>({page.total})</span></h2>
         </div>
 
         {articles.length > 0 ? (
@@ -114,6 +122,27 @@ const formatDate = (date: string) =>
           <div class="empty-state">
             <p>No articles published yet by {profile.name}.</p>
           </div>
+        )}
+
+        <!-- PAGINATION CONTROLS -->
+        {page.lastPage > 1 && (
+          <nav class="pagination-nav" aria-label="Author articles pagination">
+            {page.url.prev ? (
+              <a href={page.url.prev} class="pagination-link">← Previous</a>
+            ) : (
+              <span class="pagination-link disabled">← Previous</span>
+            )}
+
+            <span class="pagination-info">
+              Page {page.currentPage} of {page.lastPage}
+            </span>
+
+            {page.url.next ? (
+              <a href={page.url.next} class="pagination-link">Next →</a>
+            ) : (
+              <span class="pagination-link disabled">Next →</span>
+            )}
+          </nav>
         )}
       </section>
 
@@ -298,6 +327,46 @@ const formatDate = (date: string) =>
     border: 1px solid var(--color-border, #e9e7ef);
     border-radius: 15px;
     color: var(--color-purple-muted, #625d6b);
+  }
+
+  /* Pagination Styling */
+  .pagination-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 36px;
+    padding-top: 24px;
+    border-top: 1px solid var(--color-border, #e9e7ef);
+  }
+
+  .pagination-link {
+    padding: 8px 16px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 8px;
+    color: var(--color-primary, #7654d6);
+    font-weight: 600;
+    text-decoration: none;
+    font-size: .9rem;
+    transition: all 180ms ease;
+  }
+
+  .pagination-link:hover:not(.disabled) {
+    background: var(--color-primary, #7654d6);
+    color: #fff;
+    border-color: var(--color-primary, #7654d6);
+  }
+
+  .pagination-link.disabled {
+    color: var(--color-purple-muted, #625d6b);
+    opacity: 0.5;
+    pointer-events: none;
+    border-color: transparent;
+  }
+
+  .pagination-info {
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .9rem;
+    font-weight: 500;
   }
 
   @media (max-width: 760px) {
