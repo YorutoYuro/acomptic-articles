@@ -64,7 +64,7 @@ const currentPath = Astro.url.pathname;
   </div>
 </header>
 
-<!-- Upgraded Larger Search Modal Dialog -->
+<!-- Enlarged Premium Search Modal Dialog -->
 <dialog id="search-modal" class="search-modal">
   <div class="modal-content">
     <div class="modal-header">
@@ -122,7 +122,6 @@ const currentPath = Astro.url.pathname;
     }
   });
 
-  // Helper to strip all spaces and special characters for flexible matching
   const sanitize = (str) => (str || "").toString().toLowerCase().replace(/[\s@_-]+/g, "");
 
   searchInput?.addEventListener('input', (e) => {
@@ -145,7 +144,6 @@ const currentPath = Astro.url.pathname;
       return;
     }
 
-    // Split raw query into search tokens for multi-word matching
     const queryTokens = query.split(/\s+/).filter(Boolean);
 
     const scoredResults = articlesCache.map((article) => {
@@ -159,12 +157,10 @@ const currentPath = Astro.url.pathname;
       const excerptCompact = sanitize(excerpt);
       const authorCompact = sanitize(author);
 
-      // 1. Exact or compact substring match on author handle (e.g. "omkumawat" matches "om kumawat")
       if (author.includes(query) || authorCompact.includes(queryCompact)) {
         score += 50;
       }
 
-      // 2. Token matching across title and excerpt (with and without spaces)
       queryTokens.forEach(token => {
         const tokenCompact = sanitize(token);
         if (title.includes(token) || titleCompact.includes(tokenCompact)) score += 20;
@@ -172,13 +168,11 @@ const currentPath = Astro.url.pathname;
         if (category.includes(token)) score += 15;
       });
 
-      // 3. Compact full string match bonus
       if (titleCompact.includes(queryCompact)) score += 30;
 
       return { article, score };
     });
 
-    // Filter out zero scores and sort by relevance score, then recency (date)
     const filtered = scoredResults
       .filter(item => item.score > 0)
       .sort((a, b) => {
@@ -228,7 +222,6 @@ const currentPath = Astro.url.pathname;
 </script>
 
 <style>
-  /* Full-width solid header */
   .site-header {
     position: sticky;
     top: 0;
@@ -315,7 +308,6 @@ const currentPath = Astro.url.pathname;
     gap: 10px;
   }
 
-  /* Upgraded Capsule Search Button with Icon Lift Animation */
   .search-button-capsule {
     display: inline-flex;
     align-items: center;
@@ -356,7 +348,6 @@ const currentPath = Astro.url.pathname;
     transform: translateY(-2px);
   }
 
-  /* Try button */
   .try-button {
     display: inline-flex;
     align-items: center;
@@ -398,12 +389,12 @@ const currentPath = Astro.url.pathname;
     transform: translate(2px, -2px);
   }
 
-  /* Larger, Premium Search Modal Dialog */
+  /* Enlarged Modal Dimensions */
   .search-modal {
     padding: 0;
     border: 1px solid var(--color-purple-border, #e5dcff);
     border-radius: 20px;
-    width: min(840px, 94vw);
+    width: min(920px, 96vw);
     background: #ffffff;
     box-shadow: 0 30px 60px rgb(18 18 18 / 20%);
     overflow: hidden;
@@ -417,20 +408,20 @@ const currentPath = Astro.url.pathname;
   .modal-content {
     display: flex;
     flex-direction: column;
-    max-height: 85vh;
+    max-height: 88vh;
   }
 
   .modal-header {
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 22px 28px;
+    padding: 24px 30px;
     border-bottom: 1px solid rgb(20 20 20 / 10%);
   }
 
   .search-icon-modal {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     flex: 0 0 auto;
     fill: none;
     stroke: var(--color-text);
@@ -462,13 +453,13 @@ const currentPath = Astro.url.pathname;
   }
 
   .search-results {
-    padding: 24px 28px;
+    padding: 26px 30px;
     overflow-y: auto;
-    min-height: 320px;
-    max-height: 60vh;
+    min-height: 360px;
+    max-height: 68vh;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
     background: var(--color-white, #fff);
   }
 
@@ -479,13 +470,13 @@ const currentPath = Astro.url.pathname;
     justify-content: center;
     text-align: center;
     gap: 14px;
-    margin-top: 70px;
+    margin-top: 80px;
     color: var(--color-purple-muted, #625d6b);
   }
 
   .search-empty-state svg {
-    width: 48px;
-    height: 48px;
+    width: 44px;
+    height: 44px;
     stroke: var(--color-purple-muted, #625d6b);
     fill: none;
     stroke-width: 1.5;
@@ -494,19 +485,19 @@ const currentPath = Astro.url.pathname;
 
   .search-empty-state p {
     font-size: 1rem;
-    max-width: 360px;
+    max-width: 380px;
     margin: 0;
   }
 
-  /* Reusing Author Profile Page Article Row Card Styling */
+  /* Perfected Article Row Card Style Matching Profile Pages */
   .article-row {
     display: grid;
-    grid-template-columns: 168px minmax(0, 1fr) 42px;
-    gap: 26px;
+    grid-template-columns: 160px minmax(0, 1fr) 38px;
+    gap: 22px;
     align-items: center;
-    padding: 20px 24px;
+    padding: 16px 20px;
     border: 1px solid var(--color-border, #e9e7ef);
-    border-radius: 15px;
+    border-radius: 12px;
     background: var(--color-white, #fff);
     color: inherit;
     text-decoration: none;
@@ -515,35 +506,35 @@ const currentPath = Astro.url.pathname;
 
   .article-row:hover {
     border-color: var(--color-purple-border, #d9ccff);
-    box-shadow: 0 8px 24px rgba(36, 25, 72, 0.055);
+    box-shadow: 0 6px 20px rgba(36, 25, 72, 0.05);
     transform: translateY(-1px);
   }
 
   .row-date {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
     color: var(--color-purple-muted, #625d6b);
-    font-size: .8rem;
+    font-size: .78rem;
   }
 
   .row-category {
     color: var(--color-primary, #7654d6);
     font-weight: 700;
-    font-size: .74px;
+    font-size: .72rem;
   }
 
   .row-copy h4 {
     margin: 0;
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     font-weight: 650;
     color: var(--color-text);
   }
 
   .row-copy p {
-    margin: 6px 0 0;
+    margin: 4px 0 0;
     color: var(--color-purple-muted, #625d6b);
-    font-size: .88rem;
+    font-size: .85rem;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
@@ -552,8 +543,8 @@ const currentPath = Astro.url.pathname;
 
   .row-action {
     display: grid;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     place-items: center;
     border: 1px solid var(--color-border, #e9e7ef);
     border-radius: 50%;
@@ -561,8 +552,8 @@ const currentPath = Astro.url.pathname;
   }
 
   .row-action svg {
-    width: 17px;
-    height: 17px;
+    width: 15px;
+    height: 15px;
     fill: none;
     stroke: currentColor;
     stroke-width: 2;
@@ -570,7 +561,7 @@ const currentPath = Astro.url.pathname;
 
   @media (max-width: 760px) {
     .article-row {
-      grid-template-columns: minmax(0, 1fr) 36px;
+      grid-template-columns: minmax(0, 1fr) 34px;
     }
     .row-date {
       grid-column: 1 / -1;
