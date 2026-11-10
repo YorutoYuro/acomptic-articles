@@ -375,7 +375,16 @@ const schema = [
 
   .articles-container {
     width: min(1160px, calc(100% - 64px));
+    max-width: 1160px;
     margin-inline: auto;
+  }
+
+  /* Keep the hero and lower article cards on precisely the same container edges. */
+  .articles-hero > .articles-container,
+  .latest-sections > .articles-container {
+    width: min(1160px, calc(100% - 64px)) !important;
+    max-width: 1160px !important;
+    margin-inline: auto !important;
   }
 
   /* Hero: a contained, balanced feature card rather than a full-screen block */
@@ -396,9 +405,10 @@ const schema = [
   }
 
   .carousel-viewport {
+    display: block;
     min-width: 0;
-    width: 100%;
-    max-width: none;
+    width: 100% !important;
+    max-width: none !important;
     overflow: hidden;
     position: relative;
     border-radius: 18px;
@@ -474,7 +484,8 @@ const schema = [
     position: relative;
     display: flex;
     align-items: center;
-    width: 100%;
+    width: 100% !important;
+    min-width: 100%;
     max-width: none;
     box-sizing: border-box;
     min-height: clamp(310px, 32vw, 390px);
@@ -797,6 +808,8 @@ const schema = [
 
   @media (max-width: 760px) {
     .articles-container { width: calc(100% - 36px); }
+    .articles-hero > .articles-container,
+    .latest-sections > .articles-container { width: calc(100% - 36px) !important; }
 
     .articles-hero { padding: 34px 0 40px; }
 
@@ -855,6 +868,8 @@ const schema = [
 
   @media (max-width: 430px) {
     .articles-container { width: calc(100% - 28px); }
+    .articles-hero > .articles-container,
+    .latest-sections > .articles-container { width: calc(100% - 28px) !important; }
     .insights-carousel { width: 100%; }
     .carousel-prev { left: -14px; }
     .carousel-next { right: -14px; }
