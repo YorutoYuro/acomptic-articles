@@ -35,6 +35,14 @@ const PAGE_SIZE = 10;
 
 const { profile, username, articles, totalArticles } = Astro.props;
 
+// Unique categories with counts, for the filter chips
+const categoryMap = new Map<string, number>();
+for (const art of articles) {
+  const key = String(art.category || "").toLowerCase();
+  if (key) categoryMap.set(key, (categoryMap.get(key) || 0) + 1);
+}
+const categories = Array.from(categoryMap.entries()).sort((a, b) => b[1] - a[1]);
+
 const formatDate = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
     day: "numeric",
@@ -46,7 +54,7 @@ const formatDate = (date: string) =>
 <Layout title={`${profile.name} (@${username}) - Acomptic`}>
   <main class="author-profile-page">
     <div class="articles-container">
-      
+
       <header class="author-header">
         <div class="author-avatar-wrap">
           {profile.avatar ? (
@@ -81,10 +89,73 @@ const formatDate = (date: string) =>
           <h2>Articles by {profile.name} <span>({totalArticles})</span></h2>
         </div>
 
+        {totalArticles > 0 && (
+          <div class="author-search" role="search">
+            <div class="search-field">
+              <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3.5-3.5" />
+              </svg>
+              <input
+                id="author-search-input"
+                type="search"
+                placeholder={`Search ${profile.name}'s articles…`}
+                autocomplete="off"
+                spellcheck="false"
+                aria-label={`Search articles by ${profile.name}`}
+              />
+              <kbd class="search-kbd" id="search-kbd" aria-hidden="true">/</kbd>
+              <button type="button" id="search-clear" class="search-clear" aria-label="Clear search" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </div>
+
+            <div class="search-controls">
+              {categories.length > 1 && (
+                <div class="chips" id="category-chips" role="group" aria-label="Filter by category">
+                  <button type="button" class="chip is-active" data-cat="all" aria-pressed="true">
+                    All <span>{totalArticles}</span>
+                  </button>
+                  {categories.map(([cat, count]) => (
+                    <button type="button" class="chip" data-cat={cat} aria-pressed="false">
+                      {cat.toUpperCase()} <span>{count}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <label class="sort-wrap">
+                <span>Sort</span>
+                <select id="sort-select">
+                  <option value="relevance" disabled>Best match</option>
+                  <option value="newest" selected>Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="shortest">Shortest read</option>
+                  <option value="longest">Longest read</option>
+                </select>
+              </label>
+            </div>
+
+            <p class="search-hint">
+              Tip: use "quotes" for an exact phrase and -word to exclude a word. Small typos are forgiven.
+            </p>
+          </div>
+        )}
+
+        <p id="results-status" class="results-status" aria-live="polite"></p>
+
         {articles.length > 0 ? (
-          <div class="topic-articles-list">
+          <div class="topic-articles-list" id="articles-list" data-page-size={PAGE_SIZE}>
             {articles.map((art, i) => (
-              <a class="article-row" href={art.url} target="_self" hidden={i >= PAGE_SIZE}>
+              <a
+                class="article-row"
+                href={art.url}
+                target="_self"
+                hidden={i >= PAGE_SIZE}
+                data-category={String(art.category || "").toLowerCase()}
+                data-date={art.date}
+                data-read={art.readTime}
+              >
                 <div class="row-date">
                   <span>{formatDate(art.date)}</span>
                   <span>{art.readTime} min read</span>
@@ -108,12 +179,14 @@ const formatDate = (date: string) =>
           </div>
         )}
 
+        <div class="empty-state no-results" id="no-results" hidden>
+          <p>No articles match your search.</p>
+          <button type="button" id="no-results-clear" class="pagination-link">Clear search & filters</button>
+        </div>
+
         {totalArticles > PAGE_SIZE && (
-          <div class="load-more-wrap" data-page-size={PAGE_SIZE} data-total={totalArticles}>
+          <div class="load-more-wrap" id="load-more-wrap">
             <button type="button" id="load-more" class="pagination-link">Load more</button>
-            <span id="load-more-status" class="pagination-info" aria-live="polite">
-              Showing {PAGE_SIZE} of {totalArticles}
-            </span>
           </div>
         )}
       </section>
@@ -123,28 +196,381 @@ const formatDate = (date: string) =>
 </Layout>
 
 <script>
-  const wrap = document.querySelector<HTMLElement>(".load-more-wrap");
-  const btn = document.getElementById("load-more");
-  const status = document.getElementById("load-more-status");
+  const list = document.getElementById("articles-list");
 
-  if (wrap && btn && status) {
-    const pageSize = Number(wrap.dataset.pageSize);
-    const total = Number(wrap.dataset.total);
+  if (list) {
+    const PAGE = Number(list.dataset.pageSize) || 10;
 
-    btn.addEventListener("click", () => {
-      const hidden = document.querySelectorAll<HTMLElement>(".article-row[hidden]");
-      hidden.forEach((el, i) => {
-        if (i < pageSize) el.hidden = false;
+    const input = document.getElementById("author-search-input") as HTMLInputElement | null;
+    const clearBtn = document.getElementById("search-clear") as HTMLButtonElement | null;
+    const kbd = document.getElementById("search-kbd");
+    const chipsWrap = document.getElementById("category-chips");
+    const sortSelect = document.getElementById("sort-select") as HTMLSelectElement | null;
+    const statusEl = document.getElementById("results-status");
+    const noResults = document.getElementById("no-results");
+    const noResultsClear = document.getElementById("no-results-clear");
+    const loadMoreWrap = document.getElementById("load-more-wrap");
+    const loadMoreBtn = document.getElementById("load-more") as HTMLButtonElement | null;
+    const relevanceOpt = sortSelect?.querySelector('option[value="relevance"]') as HTMLOptionElement | null;
+
+    // ---------- text helpers ----------
+    const norm = (s: string) =>
+      s
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^\p{L}\p{N}\s]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // Edit distance check (small max, early exit)
+    function within(a: string, b: string, max: number) {
+      if (Math.abs(a.length - b.length) > max) return false;
+      let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+      for (let i = 1; i <= a.length; i++) {
+        const curr = [i];
+        let rowMin = i;
+        for (let j = 1; j <= b.length; j++) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          const v = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+          curr[j] = v;
+          if (v < rowMin) rowMin = v;
+        }
+        if (rowMin > max) return false;
+        prev = curr;
+      }
+      return prev[b.length] <= max;
+    }
+
+    // ---------- index built from the rendered rows ----------
+    const records = Array.from(list.querySelectorAll<HTMLElement>(".article-row")).map((el, i) => {
+      const titleEl = el.querySelector("h4") as HTMLElement;
+      const excerptEl = el.querySelector(".row-copy p") as HTMLElement;
+      const title = titleEl?.textContent ?? "";
+      const excerpt = excerptEl?.textContent ?? "";
+      const category = el.dataset.category ?? "";
+      const nTitle = norm(title);
+      const nExcerpt = norm(excerpt);
+      return {
+        el,
+        i,
+        titleEl,
+        excerptEl,
+        title,
+        excerpt,
+        category,
+        date: el.dataset.date ?? "",
+        read: Number(el.dataset.read) || 0,
+        nTitle,
+        nExcerpt,
+        nCat: norm(category),
+        wTitle: nTitle.split(" ").filter(Boolean),
+        wExcerpt: nExcerpt.split(" ").filter(Boolean),
+      };
+    });
+
+    type Rec = (typeof records)[number];
+
+    // ---------- query parsing ----------
+    function parseQuery(raw: string) {
+      const phrases: string[] = [];
+      const excluded: string[] = [];
+      const terms: string[] = [];
+
+      const rest = raw.replace(/(-?)"([^"]+)"/g, (_m, neg: string, p: string) => {
+        const n = norm(p);
+        if (n) (neg ? excluded : phrases).push(n);
+        return " ";
       });
 
-      const remaining = document.querySelectorAll(".article-row[hidden]").length;
-      const shown = total - remaining;
-      status.textContent = `Showing ${shown} of ${total}`;
+      rest.split(/\s+/).forEach((tok) => {
+        if (!tok) return;
+        if (tok.startsWith("-") && tok.length > 1) {
+          const n = norm(tok.slice(1));
+          if (n) excluded.push(n);
+        } else {
+          norm(tok)
+            .split(" ")
+            .forEach((w) => w && terms.push(w));
+        }
+      });
 
-      if (remaining === 0) {
-        btn.remove();
+      return { phrases, excluded, terms };
+    }
+
+    function scoreTerm(r: Rec, t: string) {
+      let s = 0;
+      if (r.wTitle.includes(t)) s += 12;
+      else if (r.wTitle.some((w) => w.startsWith(t))) s += 9;
+      else if (r.nTitle.includes(t)) s += 6;
+
+      if (r.nCat.includes(t)) s += 5;
+
+      if (r.wExcerpt.includes(t)) s += 4;
+      else if (r.wExcerpt.some((w) => w.startsWith(t))) s += 3;
+      else if (r.nExcerpt.includes(t)) s += 1.5;
+
+      // typo tolerance
+      if (s === 0 && t.length >= 4) {
+        const max = t.length >= 8 ? 2 : 1;
+        if (r.wTitle.some((w) => within(w, t, max))) s += 4;
+        else if (r.wExcerpt.some((w) => within(w, t, max))) s += 2;
+      }
+      return s;
+    }
+
+    function scoreRecord(r: Rec, q: ReturnType<typeof parseQuery>): number | null {
+      for (const ex of q.excluded) {
+        if (r.nTitle.includes(ex) || r.nExcerpt.includes(ex) || r.nCat.includes(ex)) return null;
+      }
+
+      let total = 0;
+
+      for (const p of q.phrases) {
+        if (r.nTitle.includes(p)) total += 15;
+        else if (r.nExcerpt.includes(p)) total += 8;
+        else if (r.nCat.includes(p)) total += 6;
+        else return null;
+      }
+
+      for (const t of q.terms) {
+        const s = scoreTerm(r, t);
+        if (s === 0) return null; // every word must match somewhere
+        total += s;
+      }
+
+      return total;
+    }
+
+    // ---------- highlighting ----------
+    function highlight(el: HTMLElement, text: string, re: RegExp | null) {
+      el.textContent = "";
+      if (!re) {
+        el.textContent = text;
+        return;
+      }
+      let last = 0;
+      for (const m of text.matchAll(re)) {
+        const idx = m.index ?? 0;
+        if (idx > last) el.append(text.slice(last, idx));
+        const mark = document.createElement("mark");
+        mark.textContent = m[0];
+        el.append(mark);
+        last = idx + m[0].length;
+      }
+      if (last < text.length) el.append(text.slice(last));
+    }
+
+    // ---------- state ----------
+    let query = "";
+    let activeCat = "all";
+    let sortValue = "newest";
+    let userSorted = false;
+    let shown = PAGE;
+    let debounceTimer: number | undefined;
+
+    const params = new URLSearchParams(location.search);
+    query = params.get("q") ?? "";
+    activeCat = (params.get("cat") ?? "all").toLowerCase();
+    if (!records.some((r) => r.category === activeCat)) activeCat = "all";
+    const urlSort = params.get("sort");
+    if (urlSort && ["relevance", "newest", "oldest", "shortest", "longest"].includes(urlSort)) {
+      sortValue = urlSort;
+      userSorted = true;
+    }
+    if (input) input.value = query;
+
+    function syncUrl() {
+      const p = new URLSearchParams();
+      if (query.trim()) p.set("q", query.trim());
+      if (activeCat !== "all") p.set("cat", activeCat);
+      if (userSorted) p.set("sort", sortValue);
+      const qs = p.toString();
+      history.replaceState(null, "", location.pathname + (qs ? `?${qs}` : ""));
+    }
+
+    function sortResults(items: { r: Rec; score: number }[], mode: string) {
+      const byDateDesc = (a: Rec, b: Rec) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.i - b.i);
+      items.sort((x, y) => {
+        switch (mode) {
+          case "relevance":
+            return y.score - x.score || byDateDesc(x.r, y.r);
+          case "oldest":
+            return -byDateDesc(x.r, y.r);
+          case "shortest":
+            return x.r.read - y.r.read || byDateDesc(x.r, y.r);
+          case "longest":
+            return y.r.read - x.r.read || byDateDesc(x.r, y.r);
+          default:
+            return byDateDesc(x.r, y.r);
+        }
+      });
+    }
+
+    function render() {
+      const q = parseQuery(query);
+      const hasQuery = q.phrases.length + q.terms.length + q.excluded.length > 0;
+      const filtered = hasQuery || activeCat !== "all";
+
+      if (relevanceOpt) relevanceOpt.disabled = !hasQuery;
+
+      let mode = userSorted ? sortValue : hasQuery ? "relevance" : "newest";
+      if (mode === "relevance" && !hasQuery) mode = "newest";
+      if (sortSelect) sortSelect.value = mode;
+
+      // match
+      const matched: { r: Rec; score: number }[] = [];
+      for (const r of records) {
+        if (activeCat !== "all" && r.category !== activeCat) continue;
+        if (!hasQuery) {
+          matched.push({ r, score: 0 });
+          continue;
+        }
+        const s = scoreRecord(r, q);
+        if (s !== null) matched.push({ r, score: s });
+      }
+
+      sortResults(matched, mode);
+
+      // highlight regex
+      const hlTerms = [...q.phrases, ...q.terms].filter(Boolean).sort((a, b) => b.length - a.length);
+      const re = hlTerms.length ? new RegExp(`(${hlTerms.map(escapeRe).join("|")})`, "gi") : null;
+
+      const matchedSet = new Set(matched.map((m) => m.r));
+      const frag = document.createDocumentFragment();
+
+      matched.forEach(({ r }, idx) => {
+        highlight(r.titleEl, r.title, re);
+        highlight(r.excerptEl, r.excerpt, re);
+        r.el.hidden = idx >= shown;
+        frag.appendChild(r.el);
+      });
+
+      records.forEach((r) => {
+        if (!matchedSet.has(r)) {
+          r.el.hidden = true;
+          frag.appendChild(r.el);
+        }
+      });
+
+      list.appendChild(frag);
+
+      // status + controls
+      const total = matched.length;
+      const visible = Math.min(shown, total);
+
+      if (statusEl) {
+        if (total === 0) {
+          statusEl.textContent = "";
+        } else if (filtered) {
+          statusEl.textContent =
+            `${total} ${total === 1 ? "article" : "articles"} found` +
+            (total > visible ? ` · showing ${visible}` : "");
+        } else {
+          statusEl.textContent = `Showing ${visible} of ${total} articles`;
+        }
+      }
+
+      list.hidden = total === 0;
+      if (noResults) noResults.hidden = total !== 0;
+
+      if (loadMoreWrap && loadMoreBtn) {
+        const remaining = total - visible;
+        loadMoreWrap.hidden = remaining <= 0;
+        loadMoreBtn.textContent = `Load more (${remaining} remaining)`;
+      }
+
+      if (clearBtn) clearBtn.hidden = !query;
+      if (kbd) kbd.hidden = !!query;
+
+      chipsWrap?.querySelectorAll<HTMLButtonElement>(".chip").forEach((chip) => {
+        const on = chip.dataset.cat === activeCat;
+        chip.classList.toggle("is-active", on);
+        chip.setAttribute("aria-pressed", String(on));
+      });
+    }
+
+    function resetAll() {
+      query = "";
+      activeCat = "all";
+      userSorted = false;
+      sortValue = "newest";
+      shown = PAGE;
+      if (input) input.value = "";
+      syncUrl();
+      render();
+    }
+
+    // ---------- events ----------
+    input?.addEventListener("input", () => {
+      window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
+        query = input.value;
+        shown = PAGE;
+        syncUrl();
+        render();
+      }, 100);
+    });
+
+    input?.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if (input.value) {
+          input.value = "";
+          query = "";
+          shown = PAGE;
+          syncUrl();
+          render();
+        } else {
+          input.blur();
+        }
       }
     });
+
+    clearBtn?.addEventListener("click", () => {
+      if (input) input.value = "";
+      query = "";
+      shown = PAGE;
+      syncUrl();
+      render();
+      input?.focus();
+    });
+
+    chipsWrap?.addEventListener("click", (e) => {
+      const chip = (e.target as HTMLElement).closest<HTMLButtonElement>(".chip");
+      if (!chip) return;
+      activeCat = chip.dataset.cat ?? "all";
+      shown = PAGE;
+      syncUrl();
+      render();
+    });
+
+    sortSelect?.addEventListener("change", () => {
+      sortValue = sortSelect.value;
+      userSorted = true;
+      shown = PAGE;
+      syncUrl();
+      render();
+    });
+
+    noResultsClear?.addEventListener("click", resetAll);
+
+    loadMoreBtn?.addEventListener("click", () => {
+      shown += PAGE;
+      render();
+    });
+
+    // "/" focuses the search box
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target as HTMLElement;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      e.preventDefault();
+      input?.focus();
+    });
+
+    render();
   }
 </script>
 
@@ -251,10 +677,216 @@ const formatDate = (date: string) =>
     font-weight: 500;
   }
 
+  /* ---------- search ---------- */
+  .author-search {
+    margin-bottom: 20px;
+  }
+
+  .search-field {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 18px;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: var(--color-purple-muted, #625d6b);
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: none;
+  }
+
+  #author-search-input {
+    width: 100%;
+    padding: 15px 56px 15px 48px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 14px;
+    background: var(--color-white, #fff);
+    color: inherit;
+    font: inherit;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  #author-search-input::-webkit-search-cancel-button,
+  #author-search-input::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  #author-search-input::placeholder {
+    color: var(--color-purple-muted, #625d6b);
+    opacity: .75;
+  }
+
+  #author-search-input:focus {
+    border-color: var(--color-primary, #7654d6);
+    box-shadow: 0 0 0 4px rgba(118, 84, 214, 0.12);
+  }
+
+  .search-kbd {
+    position: absolute;
+    right: 16px;
+    min-width: 24px;
+    padding: 2px 7px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 6px;
+    background: #faf9fd;
+    color: var(--color-purple-muted, #625d6b);
+    font: inherit;
+    font-size: .78rem;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  .search-kbd[hidden],
+  .search-clear[hidden] {
+    display: none;
+  }
+
+  .search-clear {
+    position: absolute;
+    right: 10px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-purple-muted, #625d6b);
+    cursor: pointer;
+    transition: background 150ms ease;
+  }
+
+  .search-clear:hover {
+    background: #f1edfb;
+  }
+
+  .search-clear svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .search-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 999px;
+    background: var(--color-white, #fff);
+    color: var(--color-ink, #121212);
+    font: inherit;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 160ms ease;
+  }
+
+  .chip span {
+    color: var(--color-purple-muted, #625d6b);
+    font-weight: 500;
+  }
+
+  .chip:hover {
+    border-color: var(--color-purple-border, #d9ccff);
+  }
+
+  .chip.is-active {
+    background: var(--color-primary, #7654d6);
+    border-color: var(--color-primary, #7654d6);
+    color: #fff;
+  }
+
+  .chip.is-active span {
+    color: rgba(255, 255, 255, .8);
+  }
+
+  .sort-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .85rem;
+    font-weight: 600;
+  }
+
+  .sort-wrap select {
+    padding: 7px 12px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 8px;
+    background: var(--color-white, #fff);
+    color: var(--color-ink, #121212);
+    font: inherit;
+    font-size: .85rem;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .sort-wrap select:focus {
+    border-color: var(--color-primary, #7654d6);
+  }
+
+  .search-hint {
+    margin: 12px 0 0;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .8rem;
+    opacity: .85;
+  }
+
+  .results-status {
+    margin: 0 0 14px;
+    min-height: 1.2em;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .88rem;
+    font-weight: 500;
+  }
+
+  /* highlight (marks are created by JS, so they need :global) */
+  .row-copy :global(mark) {
+    background: rgba(118, 84, 214, 0.16);
+    color: inherit;
+    padding: 0 2px;
+    border-radius: 3px;
+  }
+
+  /* ---------- list ---------- */
   .topic-articles-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
+  }
+
+  .topic-articles-list[hidden] {
+    display: none;
   }
 
   .article-row {
@@ -332,6 +964,21 @@ const formatDate = (date: string) =>
     color: var(--color-purple-muted, #625d6b);
   }
 
+  .no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .no-results[hidden] {
+    display: none;
+  }
+
+  .no-results p {
+    margin: 0;
+  }
+
   .load-more-wrap {
     display: flex;
     flex-direction: column;
@@ -342,12 +989,17 @@ const formatDate = (date: string) =>
     border-top: 1px solid var(--color-border, #e9e7ef);
   }
 
+  .load-more-wrap[hidden] {
+    display: none;
+  }
+
   .pagination-link {
     padding: 8px 16px;
     border: 1px solid var(--color-border, #e9e7ef);
     border-radius: 8px;
     background: #fff;
     color: var(--color-primary, #7654d6);
+    font: inherit;
     font-weight: 600;
     text-decoration: none;
     font-size: .9rem;
@@ -361,13 +1013,10 @@ const formatDate = (date: string) =>
     border-color: var(--color-primary, #7654d6);
   }
 
-  .pagination-info {
-    color: var(--color-purple-muted, #625d6b);
-    font-size: .9rem;
-    font-weight: 500;
-  }
-
   @media (max-width: 760px) {
+    .articles-container {
+      width: calc(100% - 32px);
+    }
     .author-header {
       flex-direction: column;
       gap: 20px;
@@ -379,6 +1028,12 @@ const formatDate = (date: string) =>
       grid-column: 1 / -1;
       flex-direction: row;
       gap: 12px;
+    }
+    .search-kbd {
+      display: none;
+    }
+    .sort-wrap {
+      margin-left: 0;
     }
   }
 </style>
