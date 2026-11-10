@@ -324,20 +324,31 @@ const currentPath = Astro.url.pathname;
   }
 
   .main-nav {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: clamp(16px, 2.2vw, 30px);
-  }
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 22px;
+  width: 100%;
+  padding: 2px 1px 3px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
 
-  .nav-link {
-    padding-block: 8px;
-    color: var(--color-text);
-    font-size: 15px;
-    font-weight: 400;
-    text-decoration: none;
-    transition: color 220ms ease;
-  }
+.main-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-link {
+  flex: 0 0 auto;
+  padding-block: 6px;
+  font-size: 14px;
+}
 
   .nav-link:hover,
   .nav-link.active {
