@@ -1,0 +1,431 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { getArticlesIndex } from "../../utils/getArticlesIndex";
+
+export async function getStaticPaths() {
+  const allArticles = await getArticlesIndex();
+  const pageSize = 10;
+
+  // Group articles by category dynamically
+  const categoriesMap = new Map<string, typeof allArticles>();
+  
+  for (const art of allArticles) {
+    const cat = art.category.toLowerCase();
+    if (!categoriesMap.has(cat)) {
+      categoriesMap.set(cat, []);
+    }
+    categoriesMap.get(cat)!.push(art);
+  }
+
+  const paths = [];
+
+  // Generate pagination routes for each category
+  for (const [category, articles] of categoriesMap.entries()) {
+    const totalPages = Math.ceil(articles.length / pageSize) || 1;
+
+    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
+      const start = (pageNum - 1) * pageSize;
+      const paginatedArticles = articles.slice(start, start + pageSize);
+
+      paths.push({
+        params: {
+          category,
+          // Page 1 uses undefined (so it maps to /category/), subsequent pages use page number
+          page: pageNum === 1 ? undefined : String(pageNum),
+        },
+        props: {
+          categoryName: category.charAt(0).toUpperCase() + category.slice(1),
+          articles: paginatedArticles,
+          allCategoryArticles: articles, // Passed to client for scoped search
+          currentPage: pageNum,
+          lastPage: totalPages,
+          totalArticles: articles.length,
+          baseUrl: `/${category}`,
+        },
+      });
+    }
+  }
+
+  return paths;
+}
+
+const { categoryName, articles, allCategoryArticles, currentPage, lastPage, totalArticles, baseUrl } = Astro.props;
+
+const formatDate = (date: string) =>
+  new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+---
+
+<Layout title={`${categoryName} Articles - Page ${currentPage} - Acomptic`}>
+  <main class="category-page">
+    <div class="category-container">
+      
+      <!-- HEADER & SCOPED SEARCH BAR -->
+      <header class="category-header">
+        <div class="title-block">
+          <h1>{categoryName}</h1>
+          <p>Explore all official articles and guides under {categoryName} <span>({totalArticles} articles)</span></p>
+        </div>
+
+        <div class="category-search-wrap">
+          <svg class="search-ico" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+          <input 
+            type="search" 
+            id="cat-search-input" 
+            placeholder={`Search within ${categoryName}...`} 
+            autocomplete="off"
+          />
+        </div>
+      </header>
+
+      <!-- ARTICLES LISTING (Dynamic or Filtered via Search) -->
+      <section class="category-articles-section">
+        <div id="articles-list-container" class="topic-articles-list">
+          {articles.map((art) => (
+            <a class="article-row" href={art.url}>
+              <div class="row-date">
+                <span>{formatDate(art.date)}</span>
+                <span>{art.readTime} min read</span>
+                <span class="row-author">By @{art.authorHandle || "acomptic"}</span>
+              </div>
+              <div class="row-copy">
+                <h4>{art.title}</h4>
+                <p>{art.excerpt}</p>
+              </div>
+              <span class="row-action" aria-label="Read article">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </span>
+            </a>
+          ))}
+        </div>
+
+        <div id="search-no-results" class="empty-state" style="display: none;">
+          <p>No articles found matching your search in {categoryName}.</p>
+        </div>
+
+        <!-- PAGINATION CONTROLS (Hidden when actively searching) -->
+        {lastPage > 1 && (
+          <nav id="pagination-nav-element" class="pagination-nav" aria-label="Category pagination">
+            {currentPage > 1 ? (
+              <a href={currentPage === 2 ? baseUrl : `${baseUrl}/${currentPage}`} class="pagination-link">← Previous</a>
+            ) : (
+              <span class="pagination-link disabled">← Previous</span>
+            )}
+
+            <span class="pagination-info">Page {currentPage} of {lastPage}</span>
+
+            {currentPage < lastPage ? (
+              <a href={`${baseUrl}/${currentPage + 1}`} class="pagination-link">Next →</a>
+            ) : (
+              <span class="pagination-link disabled">Next →</span>
+            )}
+          </nav>
+        )}
+      </section>
+
+    </div>
+  </main>
+</Layout>
+
+<!-- Client Script for Scoped Category Search -->
+<script define:vars={{ categoryArticles: allCategoryArticles }}>
+  const searchInput = document.getElementById('cat-search-input');
+  const listContainer = document.getElementById('articles-list-container');
+  const noResults = document.getElementById('search-no-results');
+  const paginationNav = document.getElementById('pagination-nav-element');
+
+  const sanitize = (str) => (str || "").toString().toLowerCase().replace(/[\s@_-]+/g, "");
+
+  searchInput?.addEventListener('input', (e) => {
+    const rawQuery = e.target.value.trim();
+    const query = rawQuery.toLowerCase();
+    const queryCompact = sanitize(rawQuery);
+
+    if (!query) {
+      // Restore default paginated view
+      window.location.reload();
+      return;
+    }
+
+    if (paginationNav) paginationNav.style.display = 'none';
+
+    const filtered = categoryArticles.filter((art) => {
+      const title = (art.title || "").toLowerCase();
+      const excerpt = (art.excerpt || "").toLowerCase();
+      const author = (art.authorHandle || "").toLowerCase();
+      
+      const titleCompact = sanitize(title);
+      const excerptCompact = sanitize(excerpt);
+      const authorCompact = sanitize(author);
+
+      return (
+        title.includes(query) || 
+        excerpt.includes(query) || 
+        author.includes(query) || 
+        titleCompact.includes(queryCompact) ||
+        authorCompact.includes(queryCompact)
+      );
+    });
+
+    if (filtered.length === 0) {
+      if (listContainer) listContainer.style.display = 'none';
+      if (noResults) noResults.style.display = 'block';
+      return;
+    }
+
+    if (noResults) noResults.style.display = 'none';
+    if (listContainer) {
+      listContainer.style.display = 'flex';
+      listContainer.innerHTML = filtered.map(art => {
+        const formattedDate = new Date(`${art.date}T00:00:00`).toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric"
+        });
+
+        return `
+          <a class="article-row" href="${art.url}">
+            <div class="row-date">
+              <span>${formattedDate}</span>
+              <span>${art.readTime} min read</span>
+              <span class="row-author">By @${art.authorHandle || "acomptic"}</span>
+            </div>
+            <div class="row-copy">
+              <h4>${art.title}</h4>
+              <p>${art.excerpt}</p>
+            </div>
+            <span class="row-action" aria-label="Read article">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </span>
+          </a>
+        `;
+      }).join('');
+    }
+  });
+</script>
+
+<style>
+  .category-page {
+    background: var(--color-white, #fff);
+    color: var(--color-ink, #121212);
+    padding: 56px 0 88px;
+  }
+
+  .category-container {
+    width: min(1160px, calc(100% - 64px));
+    margin-inline: auto;
+  }
+
+  .category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 24px;
+    padding-bottom: 36px;
+    border-bottom: 1px solid var(--color-border, #e9e7ef);
+    flex-wrap: wrap;
+  }
+
+  .title-block h1 {
+    margin: 0;
+    font-size: 2.2rem;
+    font-weight: 700;
+    letter-spacing: -.03em;
+    text-transform: capitalize;
+  }
+
+  .title-block p {
+    margin: 8px 0 0;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: 1rem;
+  }
+
+  .title-block span {
+    font-weight: 600;
+    color: var(--color-primary, #7654d6);
+  }
+
+  .category-search-wrap {
+    position: relative;
+    width: min(340px, 100%);
+  }
+
+  .search-ico {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: var(--color-purple-muted, #625d6b);
+    stroke-width: 2;
+  }
+
+  #cat-search-input {
+    width: 100%;
+    padding: 11px 16px 11px 42px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 999px;
+    font-size: .95rem;
+    outline: none;
+    transition: border-color 180ms ease, box-shadow 180ms ease;
+  }
+
+  #cat-search-input:focus {
+    border-color: var(--color-primary, #7654d6);
+    box-shadow: 0 0 0 3px rgba(118, 84, 214, 0.1);
+  }
+
+  .category-articles-section {
+    padding-top: 40px;
+  }
+
+  .topic-articles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .article-row {
+    display: grid;
+    grid-template-columns: 180px minmax(0, 1fr) 42px;
+    gap: 26px;
+    align-items: center;
+    padding: 22px 26px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 15px;
+    background: var(--color-white, #fff);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 200ms ease, box-shadow 200ms ease, transform 180ms ease;
+  }
+
+  .article-row:hover {
+    border-color: var(--color-purple-border, #d9ccff);
+    box-shadow: 0 8px 24px rgba(36, 25, 72, 0.055);
+    transform: translateY(-1px);
+  }
+
+  .row-date {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .8rem;
+  }
+
+  .row-author {
+    color: var(--color-primary, #7654d6);
+    font-weight: 600;
+  }
+
+  .row-copy h4 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 650;
+    color: var(--color-text);
+  }
+
+  .row-copy p {
+    margin: 6px 0 0;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .9rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .row-action {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 50%;
+    color: var(--color-primary, #7654d6);
+  }
+
+  .row-action svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+
+  .empty-state {
+    padding: 48px;
+    text-align: center;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 15px;
+    color: var(--color-purple-muted, #625d6b);
+  }
+
+  .pagination-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--color-border, #e9e7ef);
+  }
+
+  .pagination-link {
+    padding: 9px 18px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 8px;
+    color: var(--color-primary, #7654d6);
+    font-weight: 600;
+    text-decoration: none;
+    font-size: .9rem;
+    transition: all 180ms ease;
+  }
+
+  .pagination-link:hover:not(.disabled) {
+    background: var(--color-primary, #7654d6);
+    color: #fff;
+    border-color: var(--color-primary, #7654d6);
+  }
+
+  .pagination-link.disabled {
+    color: var(--color-purple-muted, #625d6b);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+
+  .pagination-info {
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .9rem;
+    font-weight: 500;
+  }
+
+  @media (max-width: 760px) {
+    .category-header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+    .category-search-wrap {
+      width: 100%;
+    }
+    .article-row {
+      grid-template-columns: minmax(0, 1fr) 36px;
+    }
+    .row-date {
+      grid-column: 1 / -1;
+      flex-direction: column;
+      gap: 2px;
+    }
+  }
+</style>
