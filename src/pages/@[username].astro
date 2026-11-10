@@ -73,18 +73,18 @@ const formatDate = (date: string) =>
           </div>
           <p class="author-desc">{profile.description}</p>
 
-          <!-- SOCIAL LINKS (Same Tab) -->
-          <div class="author-socials">
-            {profile.instagram && (
-              <a href={profile.instagram} class="social-link" target="_self">Instagram</a>
-            )}
-            {profile.linkedin && (
-              <a href={profile.linkedin} class="social-link" target="_self">LinkedIn</a>
-            )}
-            {profile.x && (
-              <a href={profile.x} class="social-link" target="_self">X (Twitter)</a>
-            )}
-          </div>
+          <!-- SOCIAL LINKS (Opens in a new tab) -->
+<div class="author-socials">
+  {profile.instagram && (
+    <a href={profile.instagram} class="social-link" target="_blank" rel="noopener noreferrer">Instagram</a>
+  )}
+  {profile.linkedin && (
+    <a href={profile.linkedin} class="social-link" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+  )}
+  {profile.x && (
+    <a href={profile.x} class="social-link" target="_blank" rel="noopener noreferrer">X (Twitter)</a>
+  )}
+</div>
         </div>
       </header>
 
