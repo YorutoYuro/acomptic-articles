@@ -410,27 +410,31 @@ const currentPath = Astro.url.pathname;
   /* Responsive styling for Mobile / Tablet screens */
   @media (max-width: 960px) {
     .header-inner {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-template-rows: auto auto;
       gap: 12px;
-      padding: 12px 16px;
+      padding: 14px 16px;
     }
 
     .brand {
-      justify-self: auto;
+      grid-column: 1;
+      grid-row: 1;
+      justify-self: start;
     }
 
     .header-actions {
-      justify-self: auto;
+      grid-column: 2;
+      grid-row: 1;
+      justify-self: end;
     }
 
     .main-nav {
+      grid-column: 1 / -1;
+      grid-row: 2;
       width: 100%;
       justify-content: center;
-      padding-top: 2px;
-      padding-bottom: 2px;
+      padding-top: 4px;
       gap: 18px;
     }
   }
