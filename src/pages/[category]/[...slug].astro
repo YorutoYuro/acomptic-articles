@@ -1,6 +1,8 @@
 ---
 // src/pages/[category]/[...slug].astro
 import { getCollection, render } from 'astro:content';
+import Header from '../../components/Header.astro'; // Adjust path if your header component is elsewhere
+import Footer from '../../components/Footer.astro'; // Adjust path if your footer component is elsewhere
 
 export async function getStaticPaths() {
   const articles = await getCollection('articles');
@@ -31,8 +33,13 @@ const { Content } = await render(article);
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{article.data.title} | Acomptic</title>
   </head>
-  <body style="margin: 0; font-family: system-ui, -apple-system, sans-serif; color: #121212; background: #ffffff; line-height: 1.6;">
-    <main style="max-width: 800px; margin: 40px auto; padding: 0 20px;">
+  <body style="margin: 0; font-family: system-ui, -apple-system, sans-serif; color: #121212; background: #ffffff; display: flex; flex-direction: column; min-height: 100vh;">
+    
+    <!-- Shared Site Header Component -->
+    <Header />
+
+    <!-- Main Article Container -->
+    <main style="flex: 1; max-width: 800px; width: 100%; margin: 40px auto; padding: 0 20px; box-sizing: border-box;">
       <header style="margin-bottom: 32px; padding-bottom: 20px; border-bottom: 1px solid #E5E7EB;">
         <div style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #FC642D; margin-bottom: 8px;">
           {Astro.params.category}
@@ -45,9 +52,13 @@ const { Content } = await render(article);
         </p>
       </header>
 
-      <article style="font-size: 17px;">
+      <article style="font-size: 17px; line-height: 1.7;">
         <Content />
       </article>
     </main>
+
+    <!-- Shared Site Footer Component -->
+    <Footer />
+
   </body>
 </html>
