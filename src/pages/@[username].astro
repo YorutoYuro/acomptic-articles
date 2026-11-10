@@ -7,13 +7,11 @@ export async function getStaticPaths() {
   const allArticles = await getCollection("articles");
   
   return Object.entries(authorsData).map(([username, profile]) => {
+    // STRICT COMPARISON: Matches art.data.author directly against the JSON key (username)
     const authorArticles = allArticles
       .filter((art) => {
-        const artAuthor = (art.data.author || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-        const targetUsername = username.toLowerCase().replace(/[^a-z0-9]/g, "");
-        const targetName = (profile.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-        
-        return artAuthor === targetUsername || artAuthor === targetName;
+        const artAuthor = (art.data.author || "").trim().toLowerCase();
+        return artAuthor === username.toLowerCase();
       })
       .map((art) => {
         const normalizedId = art.id.replace(/\\/g, "/");
@@ -70,22 +68,16 @@ const formatDate = (date: string) =>
           </div>
           <p class="author-desc">{profile.description}</p>
 
-          <!-- INSTAGRAM, LINKEDIN & X SOCIAL LINKS (Same Tab) -->
+          <!-- SOCIAL LINKS (Same Tab) -->
           <div class="author-socials">
             {profile.instagram && (
-              <a href={profile.instagram} class="social-link">
-                Instagram
-              </a>
+              <a href={profile.instagram} class="social-link">Instagram</a>
             )}
             {profile.linkedin && (
-              <a href={profile.linkedin} class="social-link">
-                LinkedIn
-              </a>
+              <a href={profile.linkedin} class="social-link">LinkedIn</a>
             )}
             {profile.x && (
-              <a href={profile.x} class="social-link">
-                X (Twitter)
-              </a>
+              <a href={profile.x} class="social-link">X (Twitter)</a>
             )}
           </div>
         </div>
@@ -141,7 +133,6 @@ const formatDate = (date: string) =>
     margin-inline: auto;
   }
 
-  /* Header Section */
   .author-header {
     display: flex;
     gap: 32px;
@@ -217,7 +208,6 @@ const formatDate = (date: string) =>
     border-color: var(--color-primary, #7654d6);
   }
 
-  /* Articles Listing */
   .author-articles-section {
     padding-top: 40px;
   }
