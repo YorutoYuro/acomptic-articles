@@ -4,8 +4,8 @@ date: "2026-11-05"
 description: "A short summary of your article that will show up on the index page."
 readTime: 5
 author: "John Doe"
-authorHandle: "@omkumawat"
-authorUrl: "https://articles.acomptic.com/@omkumawat"
+authorHandle: "@JohnDoe"
+authorUrl: "https://articles.acomptic.com/@johndoe"
 ---
 
 Your article content goes here...
