@@ -3,9 +3,9 @@ title: "Mastering GSTR-3B: Common Filing Mistakes and How to Avoid Them"
 date: "2026-11-08"
 description: "A straightforward guide on how to reconcile your input tax credit accurately and avoid late penalties during monthly GST returns."
 readTime: 5
-author: "Acomptic Team"
+author: "Test 1"
 authorHandle: "@acomptic"
-authorUrl: "https://x.com/acomptic"
+authorUrl: "https://articles.acomptic.com/@test1"
 ---
 
 Filing your monthly GSTR-3B return correctly is essential to maintaining a clean compliance record and protecting your working capital. However, minor input discrepancies during data entry can often trigger notices or mismatches with G2B portals.
