@@ -77,7 +77,11 @@ const currentPath = Astro.url.pathname;
         placeholder="Search articles by title, author, or keyword..."
         autocomplete="off"
       />
-      <button type="button" id="close-modal" aria-label="Close search">×</button>
+      <button type="button" id="close-modal" aria-label="Close search">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" />
+        </svg>
+      </button>
     </div>
 
     <div id="search-results" class="search-results">
@@ -497,6 +501,16 @@ const currentPath = Astro.url.pathname;
     line-height: 1;
     cursor: pointer;
     transition: background-color 180ms ease, color 180ms ease;
+  }
+
+  .search-modal #close-modal svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
   }
 
   .search-modal #close-modal:hover {
