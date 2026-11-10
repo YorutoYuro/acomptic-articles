@@ -26,13 +26,6 @@ export async function getStaticPaths() {
 const { article } = Astro.props;
 const { Content } = await render(article);
 
-const categorySlug = Astro.params.category;
-const formattedCategory = categorySlug === "gst" 
-  ? "GST" 
-  : categorySlug === "income-tax" 
-    ? "Income Tax" 
-    : categorySlug.charAt(0).toUpperCase() + categorySlug.slice(1);
-
 const formatDate = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
     day: "numeric",
@@ -40,10 +33,14 @@ const formatDate = (date: string) =>
     year: "numeric",
   });
 
-const readTime = article.data.readTime || 4; // Default fallback read time if not specified in frontmatter
-const authorName = article.data.author || "Acomptic Team";
+const readTime = article.data.readTime || 4;
 
-// Structured data schema for individual article SEO
+// Custom Author metadata from Frontmatter
+const authorName = article.data.author || "Acomptic Team";
+const authorHandle = article.data.authorHandle || null; // e.g., "@johndoe"
+const authorUrl = article.data.authorUrl || (authorHandle ? `https://x.com/${authorHandle.replace('@', '')}` : null);
+
+// Structured data schema for SEO
 const schema = [
   {
     "@context": "https://schema.org",
@@ -52,19 +49,11 @@ const schema = [
     "description": article.data.description || article.data.excerpt,
     "datePublished": article.data.date,
     "author": {
-      "@type": "Organization",
-      "name": authorName
+      "@type": "Person",
+      "name": authorName,
+      "url": authorUrl
     },
     "publisher": { "@id": `${mainSiteURL}/#organization` }
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Home", "item": `${mainSiteURL}/` },
-      { "@type": "ListItem", "position": 2, "name": "Articles", "item": "https://articles.acomptic.com/" },
-      { "@type": "ListItem", "position": 3, "name": article.data.title, "item": article.url }
-    ]
   }
 ];
 ---
@@ -75,11 +64,10 @@ const schema = [
   schema={schema}
 >
   <main class="article-page">
-    <article class="article-container">
+    <article class="articles-container">
       
-      <!-- Article Header Section -->
+      <!-- Article Header -->
       <header class="article-header">
-        <div class="article-eyebrow">{formattedCategory}</div>
         <h1 class="article-title">{article.data.title}</h1>
         {article.data.description && (
           <p class="article-excerpt">{article.data.description}</p>
@@ -89,6 +77,11 @@ const schema = [
           <div class="meta-author">
             <span class="author-label">By</span>
             <span class="author-name">{authorName}</span>
+            {authorHandle && authorUrl && (
+              <a href={authorUrl} target="_blank" rel="noopener noreferrer" class="author-handle-link">
+                ({authorHandle})
+              </a>
+            )}
           </div>
           <span class="meta-divider" aria-hidden="true">·</span>
           <time datetime={article.data.date}>{formatDate(article.data.date)}</time>
@@ -97,12 +90,12 @@ const schema = [
         </div>
       </header>
 
-      <!-- Article Body Content -->
+      <!-- Main Article Body -->
       <div class="article-content-body">
         <Content />
       </div>
 
-      <!-- Footer Action CTA matching index style -->
+      <!-- Bottom Call To Action (Matching Index CTA) -->
       <footer class="article-footer-cta">
         <div class="cta-card">
           <div>
@@ -127,8 +120,8 @@ const schema = [
     background: var(--color-white, #fff);
     color: var(--color-ink, #121212);
     font-family: var(--font-primary);
-    line-height: 1.7;
-    padding: 56px 0 88px;
+    line-height: 1.618;
+    padding: 58px 0 88px;
     overflow-wrap: anywhere;
   }
 
@@ -138,41 +131,34 @@ const schema = [
     box-sizing: border-box;
   }
 
-  .article-container {
-    width: min(780px, calc(100% - 48px));
+  /* Matching container width & margins directly from index.astro */
+  .articles-container {
+    width: min(1120px, calc(100% - 48px));
     margin-inline: auto;
   }
 
   .article-header {
-    margin-bottom: 42px;
+    margin-bottom: 48px;
     padding-bottom: 32px;
     border-bottom: 1px solid var(--color-border, #e9e7ef);
-  }
-
-  .article-eyebrow {
-    margin: 0 0 14px;
-    color: var(--color-primary, #7654d6);
-    font-size: .8rem;
-    font-weight: 700;
-    letter-spacing: .12em;
-    text-transform: uppercase;
   }
 
   .article-title {
     margin: 0 0 20px;
     color: var(--color-ink, #121212);
-    font-size: clamp(2.1rem, 4.2vw, 3.2rem);
+    font-size: clamp(2.2rem, 4.4vw, 3.35rem);
     font-weight: 650;
-    letter-spacing: -.048em;
-    line-height: 1.15;
+    letter-spacing: -.052em;
+    line-height: 1.12;
     text-wrap: balance;
   }
 
   .article-excerpt {
+    max-width: 840px;
     margin: 0 0 24px;
     color: var(--color-purple-muted, #625d6b);
-    font-size: clamp(1.05rem, 1.3vw, 1.18rem);
-    line-height: 1.7;
+    font-size: clamp(1.05rem, 1.3vw, 1.15rem);
+    line-height: 1.75;
   }
 
   .article-meta-bar {
@@ -185,6 +171,9 @@ const schema = [
   }
 
   .meta-author {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     font-weight: 600;
     color: var(--color-ink, #121212);
   }
@@ -192,51 +181,61 @@ const schema = [
   .author-label {
     font-weight: 400;
     color: var(--color-purple-muted, #625d6b);
-    margin-right: 3px;
   }
 
-  /* Typography formatting for Markdown elements inside <Content /> */
+  .author-handle-link {
+    color: var(--color-primary, #7654d6);
+    text-decoration: none;
+    font-weight: 500;
+    transition: text-decoration 180ms ease;
+  }
+
+  .author-handle-link:hover,
+  .author-handle-link:focus-visible {
+    text-decoration: underline;
+  }
+
+  /* Full-width content body typography */
   .article-content-body {
-    font-size: 1.08rem;
+    font-size: 1.1rem;
     color: var(--color-ink, #121212);
+    line-height: 1.8;
   }
 
   .article-content-body :global(h2) {
-    font-size: 1.8rem;
+    font-size: clamp(1.6rem, 2.8vw, 2.1rem);
     font-weight: 650;
-    letter-spacing: -.03em;
-    margin-top: 2.2em;
+    letter-spacing: -.035em;
+    margin-top: 2em;
     margin-bottom: 0.75em;
     color: var(--color-ink, #121212);
   }
 
   .article-content-body :global(h3) {
-    font-size: 1.35rem;
+    font-size: clamp(1.3rem, 2.2vw, 1.55rem);
     font-weight: 650;
     letter-spacing: -.025em;
-    margin-top: 1.8em;
+    margin-top: 1.6em;
     margin-bottom: 0.6em;
     color: var(--color-ink, #121212);
   }
 
   .article-content-body :global(p) {
     margin-top: 0;
-    margin-bottom: 1.5em;
-    line-height: 1.75;
+    margin-bottom: 1.6em;
     color: var(--color-purple-muted, #625d6b);
   }
 
   .article-content-body :global(ul), 
   .article-content-body :global(ol) {
     margin-top: 0;
-    margin-bottom: 1.5em;
+    margin-bottom: 1.6em;
     padding-left: 1.5em;
     color: var(--color-purple-muted, #625d6b);
   }
 
   .article-content-body :global(li) {
     margin-bottom: 0.5em;
-    line-height: 1.6;
   }
 
   .article-content-body :global(strong) {
@@ -246,21 +245,15 @@ const schema = [
 
   .article-content-body :global(blockquote) {
     margin: 2em 0;
-    padding: 1em 1.25em;
+    padding: 1.2em 1.5em;
     border-left: 3px solid var(--color-primary, #7654d6);
     background: var(--color-surface-soft, #faf9fc);
-    border-radius: 0 8px 8px 0;
+    border-radius: 0 12px 12px 0;
   }
 
-  .article-content-body :global(blockquote p:last-child) {
-    margin-bottom: 0;
-  }
-
-  /* Bottom CTA matching index page card */
+  /* Bottom CTA matching index page layout */
   .article-footer-cta {
-    margin-top: 64px;
-    padding-top: 48px;
-    border-top: 1px solid var(--color-border, #e9e7ef);
+    margin-top: 80px;
   }
 
   .cta-card {
@@ -324,7 +317,7 @@ const schema = [
   }
 
   @media (max-width: 700px) {
-    .article-container {
+    .articles-container {
       width: calc(100% - 32px);
     }
     .article-page {
