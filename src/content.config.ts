@@ -8,6 +8,10 @@ const articles = defineCollection({
     title: z.string(),
     date: z.string(),
     description: z.string().optional(),
+    readTime: z.number().optional(),
+    author: z.string().optional(),        // <-- Added this
+    authorHandle: z.string().optional(),  // <-- Added this
+    authorUrl: z.string().optional(),     // <-- Added this
   }),
 });
 
