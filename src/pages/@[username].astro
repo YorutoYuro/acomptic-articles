@@ -1,7 +1,9 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { getCollection } from "astro:content";
-import authorsData from "../../data/authors.json";
+// Fix the relative depth from 3 dots to 2 dots:
+import authorsData from "../data/authors.json"; 
+---
 
 export async function getStaticPaths({ paginate }) {
   const allArticles = await getCollection("articles");
