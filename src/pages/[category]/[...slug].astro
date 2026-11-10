@@ -1,15 +1,14 @@
 ---
 // src/pages/[category]/[...slug].astro
 import { getCollection } from 'astro:content';
-import BaseLayout from '../../layouts/BaseLayout.astro'; // Ensure this points to your shared site layout
 
 export async function getStaticPaths() {
   const articles = await getCollection('articles');
   
   return articles.map((article) => {
-    const parts = article.slug.split('/');
-    const category = parts[0];
-    const slug = parts.slice(1).join('/');
+    const parts = article.id.split('/');
+    const category = parts.length > 1 ? parts[0] : 'general';
+    const slug = parts.length > 1 ? parts.slice(1).join('/') : parts[0];
 
     return {
       params: { category, slug },
@@ -22,24 +21,30 @@ const { article } = Astro.props;
 const { Content } = await article.render();
 ---
 
-<BaseLayout title={`${article.data.title} | Acomptic`}>
-  <div style="max-width: 800px; margin: 0 auto; padding: 40px 20px; font-family: system-ui, sans-serif; color: #121212;">
-    <!-- Shared Article Header UI -->
-    <header style="margin-bottom: 32px; padding-bottom: 24px; border-bottom: 1px solid #E5E7EB;">
-      <div style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #FC642D; margin-bottom: 8px;">
-        {Astro.params.category}
-      </div>
-      <h1 style="font-size: 36px; font-weight: 700; line-height: 1.25; margin: 0 0 12px 0;">
-        {article.data.title}
-      </h1>
-      <div style="font-size: 14px; color: #6B7280;">
-        Published on {article.data.date}
-      </div>
-    </header>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{article.data.title} | Acomptic</title>
+  </head>
+  <body style="margin: 0; font-family: system-ui, -apple-system, sans-serif; color: #121212; background: #ffffff; line-height: 1.6;">
+    <main style="max-width: 800px; margin: 40px auto; padding: 0 20px;">
+      <header style="margin-bottom: 32px; padding-bottom: 20px; border-bottom: 1px solid #E5E7EB;">
+        <div style="font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: #FC642D; margin-bottom: 8px;">
+          {Astro.params.category}
+        </div>
+        <h1 style="font-size: 36px; font-weight: 700; line-height: 1.2; margin: 0 0 12px 0;">
+          {article.data.title}
+        </h1>
+        <p style="font-size: 14px; color: #6B7280; margin: 0;">
+          Published on {article.data.date}
+        </p>
+      </header>
 
-    <!-- Markdown Content Body -->
-    <main class="article-body" style="font-size: 17px; line-height: 1.7;">
-      <Content />
+      <article style="font-size: 17px;">
+        <Content />
+      </article>
     </main>
-  </div>
-</BaseLayout>
+  </body>
+</html>
