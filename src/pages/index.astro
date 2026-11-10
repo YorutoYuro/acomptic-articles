@@ -259,7 +259,6 @@ const schema = [
       return;
     }
 
-    // Infinite Clone Logic
     const firstClone = originalSlides[0].cloneNode(true) as HTMLElement;
     const lastClone = originalSlides[originalSlides.length - 1].cloneNode(true) as HTMLElement;
 
@@ -348,9 +347,9 @@ const schema = [
 
 <style>
   .articles-page {
-    background: #ffffff;
-    color: #121212;
-    font-family: var(--font-primary, system-ui, sans-serif);
+    background: var(--color-white, #fff);
+    color: var(--color-ink, #121212);
+    font-family: var(--font-primary);
     line-height: 1.618;
     overflow-wrap: anywhere;
   }
@@ -375,11 +374,11 @@ const schema = [
     margin-inline: auto;
   }
 
-  /* Featured Hero Carousel */
+  /* Featured Hero Carousel Container using global width */
   .articles-hero {
     padding: 58px 0 48px;
-    background: #ffffff;
-    border-bottom: 1px solid #e9e7ef;
+    background: var(--color-white, #fff);
+    border-bottom: 1px solid var(--color-border, #e9e7ef);
   }
 
   .insights-carousel {
@@ -398,7 +397,7 @@ const schema = [
     overflow: hidden;
     position: relative;
     border-radius: 18px;
-    background: #ffffff;
+    background: var(--color-white, #fff);
     z-index: 1;
   }
 
@@ -416,7 +415,7 @@ const schema = [
     padding: 4px;
   }
 
-  /* Explicit Dual Arrow Buttons */
+  /* Animated Arrow Buttons with global primary colors */
   .carousel-arrow {
     display: flex !important;
     align-items: center !important;
@@ -426,33 +425,43 @@ const schema = [
     min-width: 44px !important;
     min-height: 44px !important;
     padding: 0 !important;
-    border: 1px solid #e5dcff !important;
+    border: 1px solid var(--color-purple-border, #e5dcff) !important;
     border-radius: 50% !important;
-    background: #ffffff !important;
-    color: #7654d6 !important;
+    background: var(--color-white, #fff) !important;
+    color: var(--color-primary, #7654d6) !important;
     cursor: pointer !important;
     z-index: 10 !important;
     box-shadow: 0 2px 8px rgba(36, 25, 72, 0.08) !important;
-    transition: all 240ms cubic-bezier(.2, .7, .2, 1) !important;
+    transition:
+      background-color 240ms cubic-bezier(.2, .7, .2, 1),
+      color 240ms cubic-bezier(.2, .7, .2, 1),
+      border-color 240ms cubic-bezier(.2, .7, .2, 1),
+      box-shadow 240ms cubic-bezier(.2, .7, .2, 1),
+      transform 240ms cubic-bezier(.2, .7, .2, 1) !important;
     -webkit-tap-highlight-color: transparent;
   }
 
   .carousel-arrow svg {
     width: 20px !important;
     height: 20px !important;
-    stroke: #7654d6 !important;
+    stroke: var(--color-primary, #7654d6) !important;
+    transition: transform 240ms cubic-bezier(.2, .7, .2, 1);
   }
 
   .carousel-arrow:hover {
-    border-color: #7654d6 !important;
-    background: #7654d6 !important;
-    color: #ffffff !important;
-    transform: scale(1.05) !important;
+    border-color: var(--color-primary, #7654d6) !important;
+    background: var(--color-primary, #7654d6) !important;
+    color: var(--color-white, #fff) !important;
+    box-shadow: 0 5px 14px color-mix(in srgb, var(--color-primary, #7654d6) 22%, transparent) !important;
+    transform: scale(1.08) !important;
   }
 
   .carousel-arrow:hover svg {
-    stroke: #ffffff !important;
+    stroke: var(--color-white, #fff) !important;
   }
+
+  .carousel-prev:hover svg { transform: translateX(-2px); }
+  .carousel-next:hover svg { transform: translateX(2px); }
 
   .latest-feature {
     position: relative;
@@ -460,9 +469,9 @@ const schema = [
     overflow: hidden;
     width: 100%;
     padding: clamp(30px, 5vw, 58px);
-    border: 1px solid #e9e7ef;
+    border: 1px solid var(--color-border, #e9e7ef);
     border-radius: 12px;
-    background: #ffffff;
+    background: var(--color-white, #fff);
     color: inherit;
     text-decoration: none;
     transition: border-color 180ms ease, box-shadow 180ms ease;
@@ -470,8 +479,8 @@ const schema = [
 
   .latest-feature:hover,
   .latest-feature:focus-visible {
-    border-color: #7654d6;
-    box-shadow: 0 6px 22px rgba(36, 25, 72, 0.06);
+    border-color: var(--color-primary, #7654d6);
+    box-shadow: 0 6px 22px rgb(36 25 72 / 6%);
     outline: none;
   }
 
@@ -483,7 +492,7 @@ const schema = [
 
   .feature-kicker {
     margin: 0 0 18px;
-    color: #625d6b;
+    color: var(--color-purple-muted, #625d6b);
     font-size: .76rem;
     font-weight: 700;
     letter-spacing: .12em;
@@ -492,7 +501,7 @@ const schema = [
   .feature-copy h2 {
     max-width: 780px;
     margin: 0;
-    color: #121212;
+    color: var(--color-ink, #121212);
     font-size: clamp(2rem, 4.4vw, 3.35rem);
     font-weight: 650;
     letter-spacing: -.052em;
@@ -503,7 +512,7 @@ const schema = [
   .feature-excerpt {
     max-width: 690px;
     margin: 20px 0 0;
-    color: #625d6b;
+    color: var(--color-purple-muted, #625d6b);
     font-size: clamp(1rem, 1.3vw, 1.08rem);
     line-height: 1.75;
   }
@@ -516,7 +525,7 @@ const schema = [
     gap: 20px 28px;
     margin-top: 32px;
     padding-top: 22px;
-    border-top: 1px solid #e9e7ef;
+    border-top: 1px solid var(--color-border, #e9e7ef);
   }
 
   .article-meta {
@@ -525,7 +534,7 @@ const schema = [
     align-items: center;
     gap: 9px;
     margin: 0;
-    color: #625d6b;
+    color: var(--color-purple-muted, #625d6b);
     font-size: .84rem;
   }
 
@@ -534,7 +543,7 @@ const schema = [
     margin-left: auto;
     align-items: center;
     gap: 12px;
-    color: #7654d6;
+    color: var(--color-primary, #7654d6);
     font-size: .93rem;
     font-weight: 650;
   }
@@ -544,64 +553,71 @@ const schema = [
     width: 30px;
     height: 30px;
     place-items: center;
-    border: 1px solid #e5dcff;
+    border: 1px solid var(--color-purple-border, #e5dcff);
     border-radius: 50%;
-    background: #ffffff;
-    transition: all 240ms ease;
+    background: var(--color-white, #fff);
+    transition: all 240ms cubic-bezier(.2, .7, .2, 1);
   }
 
   .text-link-arrow svg {
     width: 15px;
     height: 15px;
-    stroke: #7654d6;
+    stroke: var(--color-primary, #7654d6);
   }
 
   .latest-feature:hover .text-link-arrow {
-    border-color: #7654d6;
-    background: #7654d6;
-    color: #ffffff;
+    border-color: var(--color-primary, #7654d6);
+    background: var(--color-primary, #7654d6);
+    color: var(--color-white, #fff);
+    transform: translateX(2px);
   }
 
   .latest-feature:hover .text-link-arrow svg {
-    stroke: #ffffff;
+    stroke: var(--color-white, #fff);
   }
 
   .empty-feature,
   .empty-topic {
     padding: 28px;
-    border: 1px solid #e9e7ef;
+    border: 1px solid var(--color-border, #e9e7ef);
     border-radius: 12px;
-    color: #625d6b;
+    color: var(--color-purple-muted, #625d6b);
   }
 
-  /* Category List Below Hero */
+  /* Latest by category sections */
   .latest-sections {
     padding: 64px 0 80px;
   }
 
+  .section-intro {
+    margin-bottom: 20px;
+  }
+
   .section-intro h2 {
-    margin: 0 0 20px;
+    margin: 0;
     font-size: clamp(1.6rem, 2.5vw, 2rem);
     font-weight: 650;
     letter-spacing: -.035em;
+    line-height: 1.2;
+    color: var(--color-ink, #121212);
   }
 
   .topic-section {
     padding: 26px 0 30px;
-    border-top: 1px solid #e9e7ef;
+    border-top: 1px solid var(--color-border, #e9e7ef);
   }
 
   .topic-heading h3 {
     margin: 0;
-    color: #121212;
+    color: var(--color-ink, #121212);
     font-size: 1.45rem;
     font-weight: 650;
     letter-spacing: -.03em;
   }
 
-  .topic-heading p {
-    margin: 5px 0 18px;
-    color: #625d6b;
+  .topic-heading p:not(.topic-eyebrow) {
+    margin: 5px 0 0;
+    color: var(--color-purple-muted, #625d6b);
     font-size: .92rem;
   }
 
@@ -617,9 +633,9 @@ const schema = [
     gap: 26px;
     align-items: center;
     padding: 24px 22px;
-    border: 1px solid #e9e7ef;
+    border: 1px solid var(--color-border, #e9e7ef);
     border-radius: 12px;
-    background: #ffffff;
+    background: var(--color-white, #fff);
     color: inherit;
     text-decoration: none;
     transition: border-color 180ms ease, box-shadow 180ms ease;
@@ -627,8 +643,8 @@ const schema = [
 
   .article-row:hover,
   .article-row:focus-visible {
-    border-color: #7654d6;
-    box-shadow: 0 6px 22px rgba(36, 25, 72, 0.06);
+    border-color: var(--color-primary, #7654d6);
+    box-shadow: 0 6px 22px rgb(36 25 72 / 6%);
     outline: none;
   }
 
@@ -636,13 +652,13 @@ const schema = [
     display: flex;
     flex-direction: column;
     gap: 5px;
-    color: #625d6b;
+    color: var(--color-purple-muted, #625d6b);
     font-size: .82rem;
   }
 
   .row-copy h4 {
     margin: 0;
-    color: #121212;
+    color: var(--color-ink, #121212);
     font-size: clamp(1.1rem, 2vw, 1.35rem);
     font-weight: 650;
     letter-spacing: -.025em;
@@ -650,13 +666,13 @@ const schema = [
   }
 
   .article-row:hover .row-copy h4 {
-    color: #7654d6;
+    color: var(--color-primary, #7654d6);
   }
 
   .row-copy p {
     max-width: 720px;
     margin: 8px 0 0;
-    color: #625d6b;
+    color: var(--color-purple-muted, #625d6b);
     font-size: .92rem;
     line-height: 1.65;
   }
@@ -666,26 +682,26 @@ const schema = [
     width: 38px;
     height: 38px;
     place-items: center;
-    border: 1px solid #e9e7ef;
+    border: 1px solid var(--color-border, #e9e7ef);
     border-radius: 50%;
-    color: #7654d6;
+    color: var(--color-primary, #7654d6);
     transition: all 240ms ease;
   }
 
   .row-action svg {
     width: 17px;
     height: 17px;
-    stroke: #7654d6;
+    stroke: var(--color-primary, #7654d6);
   }
 
   .article-row:hover .row-action {
-    border-color: #7654d6;
-    background: #7654d6;
-    color: #ffffff;
+    border-color: var(--color-primary, #7654d6);
+    background: var(--color-primary, #7654d6);
+    color: var(--color-white, #fff);
   }
 
   .article-row:hover .row-action svg {
-    stroke: #ffffff;
+    stroke: var(--color-white, #fff);
   }
 
   /* Bottom CTA */
@@ -700,27 +716,29 @@ const schema = [
     justify-content: space-between;
     gap: 24px 40px;
     padding: clamp(28px, 4vw, 48px);
-    border: 1px solid #e5dcff;
+    border: 1px solid var(--color-purple-border, #e5dcff);
     border-radius: 18px;
-    background: #faf9fc;
-    box-shadow: 0 4px 18px rgba(36, 25, 72, 0.04);
+    background: var(--color-surface-soft, #faf9fc);
+    box-shadow: 0 4px 18px rgb(36 25 72 / 4%);
   }
 
   .cta-card h2 {
     margin: 0;
     font-size: clamp(1.75rem, 3vw, 2.5rem);
     font-weight: 700;
+    letter-spacing: -.045em;
     line-height: 1.15;
+    color: var(--color-ink, #121212);
   }
 
   .cta-card h2 span {
-    color: #7654d6;
+    color: var(--color-primary, #7654d6);
   }
 
   .cta-card p {
     max-width: 520px;
     margin: 10px 0 0;
-    color: #625d6b;
+    color: var(--color-purple-muted, #625d6b);
   }
 
   .articles-btn {
@@ -728,20 +746,21 @@ const schema = [
     align-items: center;
     justify-content: center;
     padding: 12px 25px;
-    border: 1px solid #7654d6;
+    border: 1px solid var(--color-primary, #7654d6);
     border-radius: 999px;
-    background: #7654d6;
-    color: #ffffff;
+    background: var(--color-primary, #7654d6);
+    color: var(--color-white, #fff);
     font-size: .96rem;
     font-weight: 650;
     text-decoration: none;
     white-space: nowrap;
-    transition: all 180ms ease;
+    transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
   }
 
   .articles-btn:hover {
-    background: #5f3fc0;
-    border-color: #5f3fc0;
+    background: var(--color-primary-hover, #5f3fc0);
+    border-color: var(--color-primary-hover, #5f3fc0);
+    transform: translateY(-1px);
   }
 
   @media (max-width: 700px) {
