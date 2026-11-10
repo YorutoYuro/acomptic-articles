@@ -37,7 +37,7 @@ const allArticles = rawArticles.map((article) => {
     excerpt: article.data.description || article.data.excerpt || "",
     date: article.data.date,
     readTime: article.data.readTime || 4,
-    author: article.data.author || "Acomptic Team",
+    author: article.data.author || "Om Kumawat",
     category: category,
     url: `/${category}/${slug}`,
   };
@@ -140,13 +140,15 @@ const schema = [
                     <a class="latest-feature" href={article.url} aria-label={`Read ${article.title}`}>
                       <div class="feature-content">
                         <div class="feature-copy">
-                          <p class="feature-kicker">INSIGHTS</p>
+                          <div class="feature-meta-top">
+                            <span class="feature-kicker">INSIGHTS</span>
+                            <span class="meta-dot" aria-hidden="true">·</span>
+                            <span class="feature-author">By {article.author}</span>
+                          </div>
                           <h2 id={index === 0 ? "articles-title" : undefined}>{article.title}</h2>
                           <p class="feature-excerpt">{article.excerpt}</p>
                           <div class="feature-bottom">
                             <div class="article-meta">
-                              <span>By <strong>{article.author}</strong></span>
-                              <span aria-hidden="true">·</span>
                               <time datetime={article.date}>{formatDate(article.date)}</time>
                               <span aria-hidden="true">·</span>
                               <span>{article.readTime} min read</span>
@@ -400,7 +402,7 @@ const schema = [
     width: 100%;
     overflow: hidden;
     position: relative;
-    border-radius: 18px;
+    border-radius: 12px;
     background: var(--color-white, #fff);
     z-index: 1;
   }
@@ -416,7 +418,7 @@ const schema = [
     flex: 0 0 auto;
     min-width: 0;
     box-sizing: border-box;
-    padding: 4px;
+    padding: 0;
   }
 
   /* Animated Arrow Buttons */
@@ -467,13 +469,13 @@ const schema = [
   .carousel-prev:hover svg { transform: translateX(-2px); }
   .carousel-next:hover svg { transform: translateX(2px); }
 
-  /* Expanded Width for Insight Feature Card matching bottom cards layout style */
+  /* Feature Card aligned precisely with bottom card styling */
   .latest-feature {
     position: relative;
     display: block;
     overflow: hidden;
     width: 100%;
-    padding: clamp(32px, 4.5vw, 48px);
+    padding: 32px 28px;
     border: 1px solid var(--color-border, #e9e7ef);
     border-radius: 12px;
     background: var(--color-white, #fff);
@@ -495,31 +497,44 @@ const schema = [
     width: 100%;
   }
 
+  .feature-meta-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    font-size: .82rem;
+  }
+
   .feature-kicker {
-    margin: 0 0 16px;
     color: var(--color-purple-muted, #625d6b);
-    font-size: .76rem;
     font-weight: 700;
     letter-spacing: .12em;
   }
 
-  .feature-copy h2 {
-    max-width: 900px;
-    margin: 0;
+  .meta-dot {
+    color: var(--color-purple-muted, #625d6b);
+  }
+
+  .feature-author {
     color: var(--color-ink, #121212);
-    font-size: clamp(1.8rem, 3.8vw, 2.9rem);
+    font-weight: 600;
+  }
+
+  .feature-copy h2 {
+    margin: 0 0 12px;
+    color: var(--color-ink, #121212);
+    font-size: clamp(1.35rem, 2.2vw, 1.7rem);
     font-weight: 650;
-    letter-spacing: -.045em;
-    line-height: 1.15;
+    letter-spacing: -.03em;
+    line-height: 1.35;
     text-wrap: balance;
   }
 
   .feature-excerpt {
-    max-width: 820px;
-    margin: 16px 0 0;
+    margin: 0;
     color: var(--color-purple-muted, #625d6b);
-    font-size: clamp(0.98rem, 1.2vw, 1.05rem);
-    line-height: 1.7;
+    font-size: .95rem;
+    line-height: 1.65;
   }
 
   .feature-bottom {
@@ -527,9 +542,9 @@ const schema = [
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 20px 28px;
-    margin-top: 28px;
-    padding-top: 20px;
+    gap: 16px 24px;
+    margin-top: 22px;
+    padding-top: 18px;
     border-top: 1px solid var(--color-border, #e9e7ef);
   }
 
@@ -540,23 +555,23 @@ const schema = [
     gap: 9px;
     margin: 0;
     color: var(--color-purple-muted, #625d6b);
-    font-size: .84rem;
+    font-size: .82rem;
   }
 
   .text-link {
     display: inline-flex;
     margin-left: auto;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     color: var(--color-primary, #7654d6);
-    font-size: .93rem;
+    font-size: .9rem;
     font-weight: 650;
   }
 
   .text-link-arrow {
     display: grid;
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
     place-items: center;
     border: 1px solid var(--color-purple-border, #e5dcff);
     border-radius: 50%;
@@ -663,7 +678,7 @@ const schema = [
 
   .row-author {
     color: var(--color-ink, #121212);
-    font-weight: 500;
+    font-weight: 600;
   }
 
   .row-copy h4 {
