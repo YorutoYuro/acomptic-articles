@@ -142,8 +142,6 @@ const schema = [
                         <div class="feature-copy">
                           <div class="feature-meta-top">
                             <span class="feature-kicker">INSIGHTS</span>
-                            <span class="meta-dot" aria-hidden="true">·</span>
-                            <span class="feature-author">By {article.author}</span>
                           </div>
                           <h2 id={index === 0 ? "articles-title" : undefined}>{article.title}</h2>
                           <p class="feature-excerpt">{article.excerpt}</p>
@@ -152,6 +150,8 @@ const schema = [
                               <time datetime={article.date}>{formatDate(article.date)}</time>
                               <span aria-hidden="true">·</span>
                               <span>{article.readTime} min read</span>
+                              <span aria-hidden="true">·</span>
+                              <span class="feature-author">By {article.author}</span>
                             </div>
                             <span class="text-link">
                               Read article
@@ -387,11 +387,9 @@ const schema = [
 
   .insights-carousel {
     display: grid;
-    grid-template-columns: 48px minmax(0, 1fr) 48px;
-    align-items: center;
-    gap: clamp(14px, 2.2vw, 28px);
+    display: block;
     width: 100%;
-    max-width: 1080px;
+    max-width: none;
     margin-inline: auto;
     position: relative;
     z-index: 2;
@@ -435,6 +433,8 @@ const schema = [
     background: var(--color-white, #fff) !important;
     color: var(--color-primary, #7654d6) !important;
     cursor: pointer !important;
+    position: absolute !important;
+    top: 50%;
     z-index: 10 !important;
     box-shadow: 0 5px 18px rgba(36, 25, 72, 0.08) !important;
     transition:
@@ -445,6 +445,9 @@ const schema = [
       transform 240ms cubic-bezier(.2, .7, .2, 1) !important;
     -webkit-tap-highlight-color: transparent;
   }
+
+  .carousel-prev { left: -66px; transform: translateY(-50%); }
+  .carousel-next { right: -66px; transform: translateY(-50%); }
 
   .carousel-arrow svg {
     width: 21px !important;
@@ -458,7 +461,7 @@ const schema = [
     background: var(--color-primary, #7654d6) !important;
     color: var(--color-white, #fff) !important;
     box-shadow: 0 8px 22px color-mix(in srgb, var(--color-primary, #7654d6) 22%, transparent) !important;
-    transform: scale(1.06) !important;
+    transform: translateY(-50%) scale(1.06) !important;
   }
 
   .carousel-arrow:hover svg { stroke: var(--color-white, #fff) !important; }
@@ -478,14 +481,14 @@ const schema = [
     background: var(--color-white, #fff);
     color: inherit;
     text-decoration: none;
-    box-shadow: 0 10px 34px rgba(36, 25, 72, 0.045);
+    box-shadow: 0 4px 18px rgba(36, 25, 72, 0.04);
     transition: border-color 220ms ease, box-shadow 220ms ease, transform 220ms ease;
   }
 
   .latest-feature:hover,
   .latest-feature:focus-visible {
     border-color: var(--color-purple-border, #d9ccff);
-    box-shadow: 0 16px 40px rgba(36, 25, 72, 0.075);
+    box-shadow: 0 8px 24px rgba(36, 25, 72, 0.055);
     outline: none;
   }
 
@@ -793,10 +796,9 @@ const schema = [
 
     .articles-hero { padding: 34px 0 40px; }
 
-    .insights-carousel {
-      grid-template-columns: 38px minmax(0, 1fr) 38px;
-      gap: 9px;
-    }
+    .insights-carousel { width: 100%; }
+    .carousel-prev { left: -19px; }
+    .carousel-next { right: -19px; }
 
     .carousel-arrow {
       width: 38px !important;
@@ -849,7 +851,9 @@ const schema = [
 
   @media (max-width: 430px) {
     .articles-container { width: calc(100% - 28px); }
-    .insights-carousel { grid-template-columns: 32px minmax(0, 1fr) 32px; gap: 6px; }
+    .insights-carousel { width: 100%; }
+    .carousel-prev { left: -14px; }
+    .carousel-next { right: -14px; }
 
     .carousel-arrow {
       width: 32px !important;
