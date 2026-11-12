@@ -3,55 +3,48 @@ import Layout from "../layouts/Layout.astro";
 import authorsData from "../data/authors.json";
 import { getArticlesIndex } from "../utils/getArticlesIndex";
 
-const SITE_URL = "https://articles.acomptic.com";
-
 export async function getStaticPaths() {
   const allArticlesIndex = await getArticlesIndex();
+  const paths = [];
 
-  return Object.entries(authorsData).map(([username, profile]) => {
-    const cleanUsername = username.trim().replace(/^@/, "").toLowerCase();
+  for (const [username, profile] of Object.entries(authorsData)) {
+    const cleanUsername = username.trim().toLowerCase();
 
-    const authorArticles = allArticlesIndex.filter((art) => {
-      const handle = String(art.authorHandle || "").trim().replace(/^@/, "").toLowerCase();
-      return handle === cleanUsername;
-    });
+    const authorArticles = allArticlesIndex.filter(
+      (art) => art.authorHandle === cleanUsername || art.authorHandle === @${cleanUsername}
+    );
 
-    return {
-      params: { username: cleanUsername, page: undefined },
+    paths.push({
+      params: {
+        username: cleanUsername,
+        page: undefined,
+      },
       props: {
         profile,
         username: cleanUsername,
         articles: authorArticles,
         totalArticles: authorArticles.length,
       },
-    };
-  });
+    });
+  }
+
+  return paths;
 }
 
 const PAGE_SIZE = 10;
+
 const { profile, username, articles, totalArticles } = Astro.props;
 
-const authorName = profile.name || username;
-const authorDescription =
-  profile.description ||
-  `Explore articles and practical insights written by ${authorName} on Acomptic.`;
-
-const canonical = new URL(Astro.url.pathname, SITE_URL);
-canonical.search = "";
-canonical.hash = "";
-const canonicalURL = canonical.href;
-const profileImage = profile.avatar
-  ? new URL(profile.avatar, SITE_URL).href
-  : null;
-
+// Unique categories with counts, for the filter chips
 const categoryMap = new Map<string, number>();
 for (const art of articles) {
-  const key = String(art.category || "").trim().toLowerCase();
+  const key = String(art.category || "").toLowerCase();
   if (key) categoryMap.set(key, (categoryMap.get(key) || 0) + 1);
 }
 const categories = Array.from(categoryMap.entries()).sort((a, b) => b[1] - a[1]);
 
 const sortOptions = [
+  { value: "relevance", label: "Best match" },
   { value: "newest", label: "Newest first" },
   { value: "oldest", label: "Oldest first" },
   { value: "shortest", label: "Shortest read" },
@@ -59,163 +52,112 @@ const sortOptions = [
 ];
 
 const formatDate = (date: string) =>
-  new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
+  new Date(${date}T00:00:00).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
-
-const articleItems = articles.map((art, index) => ({
-  "@type": "ListItem",
-  position: index + 1,
-  url: new URL(art.url, SITE_URL).href,
-  name: art.title,
-}));
-
-const sameAs = [profile.instagram, profile.linkedin, profile.x].filter(Boolean);
-
-const schema = [
-  {
-    "@context": "https://schema.org",
-    "@type": "ProfilePage",
-    "@id": `${canonicalURL}#profilepage`,
-    url: canonicalURL,
-    name: `${authorName} – Author at Acomptic`,
-    description: authorDescription,
-    inLanguage: "en-IN",
-    mainEntity: {
-      "@type": "Person",
-      "@id": `${canonicalURL}#person`,
-      name: authorName,
-      description: authorDescription,
-      ...(profileImage ? { image: profileImage } : {}),
-      url: canonicalURL,
-      ...(sameAs.length ? { sameAs } : {}),
-    },
-    ...(articles.length
-      ? {
-          mainEntityOfPage: canonicalURL,
-          hasPart: {
-            "@type": "ItemList",
-            name: `Articles by ${authorName}`,
-            numberOfItems: articles.length,
-            itemListOrder: "https://schema.org/ItemListOrderDescending",
-            itemListElement: articleItems,
-          },
-        }
-      : {}),
-  },
-  {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Home", item: "https://acomptic.com/" },
-      { "@type": "ListItem", position: 2, name: "Articles", item: `${SITE_URL}/` },
-      { "@type": "ListItem", position: 3, name: authorName, item: canonicalURL },
-    ],
-  },
-];
 ---
 
-<Layout
-  title={`${authorName} – Author at Acomptic | Articles`}
-  description={authorDescription}
-  canonicalURL={canonicalURL}
-  schema={schema}
-  author={authorName}
-  ogType="profile"
-  ogImage={profile.avatar || "/og-image.png"}
-  ogImageAlt={`${authorName} – Acomptic author profile`}
->
-  <main class="author-page">
-    <div class="author-container">
-      <nav class="breadcrumbs" aria-label="Breadcrumb">
-        <a href="/">Articles</a>
-        <span aria-hidden="true">/</span>
-        <span aria-current="page">{authorName}</span>
-      </nav>
+<Layout title={${profile.name} (@${username}) - Acomptic}>
+  <main class="author-profile-page">
+    <div class="articles-container">
 
-      <header class="profile-hero">
-        <div class="profile-avatar-shell">
+      <header class="author-header">
+        <div class="author-avatar-wrap">
           {profile.avatar ? (
-            <img
-              class="profile-avatar"
-              src={profile.avatar}
-              alt={`${authorName}, Acomptic author`}
-              width="144"
-              height="144"
-              fetchpriority="high"
-            />
+            <img class="author-avatar" src={profile.avatar} alt={profile.name} />
           ) : (
-            <div class="profile-avatar profile-avatar-fallback" aria-hidden="true">
-              {authorName.charAt(0).toUpperCase()}
-            </div>
+            <div class="author-avatar-placeholder">{profile.name.charAt(0)}</div>
           )}
         </div>
+        <div class="author-info">
+          <div class="author-title-block">
+            <h1>
+              <span>{profile.name}</span>
+              <span class="verified-badge" title="Verified author" aria-label="Verified author" role="img">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path class="vb-shape" d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34z" />
+                  <path class="vb-check" d="M9.5 16.2l-3.7-3.7 1.4-1.4 2.3 2.3 6.3-6.3 1.4 1.4z" />
+                </svg>
+              </span>
+            </h1>
+            <span class="author-handle">@{username}</span>
+          </div>
+          <p class="author-desc">{profile.description}</p>
 
-        <div class="profile-content">
-          <span class="eyebrow">AUTHOR PROFILE</span>
-          <h1>{authorName}</h1>
-          <p class="profile-handle">@{username}</p>
-          <p class="profile-description">{authorDescription}</p>
-
-          <div class="profile-socials" aria-label={`${authorName}'s social profiles`}>
+          <div class="author-socials">
             {profile.instagram && (
-              <a href={profile.instagram} target="_blank" rel="noopener noreferrer" aria-label={`${authorName} on Instagram`}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" class="social-fill"/></svg>
-                <span>Instagram</span>
+              <a href={profile.instagram} class="author-social" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram">
+                <svg viewBox="0 0 264.583 264.583" aria-hidden="true">
+                  <defs>
+                    <radialGradient href="#ig-a" id="ig-f" cx="158.429" cy="578.088" r="52.352" fx="158.429" fy="578.088" gradientTransform="matrix(0 -4.03418 4.28018 0 -2332.227 942.236)" gradientUnits="userSpaceOnUse" />
+                    <radialGradient href="#ig-b" id="ig-g" cx="172.615" cy="600.692" r="65" fx="172.615" fy="600.692" gradientTransform="matrix(.67441 -1.16203 1.51283 .87801 -814.366 -47.835)" gradientUnits="userSpaceOnUse" />
+                    <radialGradient href="#ig-c" id="ig-h" cx="144.012" cy="51.337" r="67.081" fx="144.012" fy="51.337" gradientTransform="matrix(-2.3989 .67549 -.23008 -.81732 464.996 -26.404)" gradientUnits="userSpaceOnUse" />
+                    <radialGradient href="#ig-d" id="ig-e" cx="199.788" cy="628.438" r="52.352" fx="199.788" fy="628.438" gradientTransform="matrix(-3.10797 .87652 -.6315 -2.23914 1345.65 1374.198)" gradientUnits="userSpaceOnUse" />
+                    <linearGradient id="ig-d"><stop offset="0" stop-color="#ff005f" /><stop offset="1" stop-color="#fc01d8" /></linearGradient>
+                    <linearGradient id="ig-c"><stop offset="0" stop-color="#780cff" /><stop offset="1" stop-color="#820bff" stop-opacity="0" /></linearGradient>
+                    <linearGradient id="ig-b"><stop offset="0" stop-color="#fc0" /><stop offset="1" stop-color="#fc0" stop-opacity="0" /></linearGradient>
+                    <linearGradient id="ig-a"><stop offset="0" stop-color="#fc0" /><stop offset=".124" stop-color="#fc0" /><stop offset=".567" stop-color="#fe4a05" /><stop offset=".694" stop-color="#ff0f3f" /><stop offset="1" stop-color="#fe0657" stop-opacity="0" /></linearGradient>
+                  </defs>
+                  <path fill="url(#ig-e)" d="M204.15 18.143c-55.23 0-71.383.057-74.523.317-11.334.943-18.387 2.728-26.07 6.554-5.922 2.942-10.592 6.351-15.201 11.13-8.394 8.716-13.481 19.439-15.323 32.184-.895 6.188-1.156 7.45-1.209 39.056-.02 10.536 0 24.4 0 42.999 0 55.2.062 71.341.326 74.476.916 11.032 2.645 17.973 6.308 25.565 7 14.533 20.37 25.443 36.12 29.514 5.453 1.404 11.476 2.178 19.208 2.544 3.277.142 36.669.244 70.081.244 33.413 0 66.826-.04 70.02-.203 8.954-.422 14.153-1.12 19.901-2.606 15.852-4.09 28.977-14.838 36.12-29.575 3.591-7.409 5.412-14.614 6.236-25.07.18-2.28.255-38.626.255-74.924 0-36.304-.082-72.583-.26-74.863-.835-10.625-2.656-17.77-6.364-25.32-3.042-6.182-6.42-10.799-11.324-15.519-8.752-8.361-19.455-13.45-32.21-15.29-6.18-.894-7.41-1.158-39.033-1.213z" transform="translate(-71.816 -18.143)" />
+                  <path fill="url(#ig-f)" d="M204.15 18.143c-55.23 0-71.383.057-74.523.317-11.334.943-18.387 2.728-26.07 6.554-5.922 2.942-10.592 6.351-15.201 11.13-8.394 8.716-13.481 19.439-15.323 32.184-.895 6.188-1.156 7.45-1.209 39.056-.02 10.536 0 24.4 0 42.999 0 55.2.062 71.341.326 74.476.916 11.032 2.645 17.973 6.308 25.565 7 14.533 20.37 25.443 36.12 29.514 5.453 1.404 11.476 2.178 19.208 2.544 3.277.142 36.669.244 70.081.244 33.413 0 66.826-.04 70.02-.203 8.954-.422 14.153-1.12 19.901-2.606 15.852-4.09 28.977-14.838 36.12-29.575 3.591-7.409 5.412-14.614 6.236-25.07.18-2.28.255-38.626.255-74.924 0-36.304-.082-72.583-.26-74.863-.835-10.625-2.656-17.77-6.364-25.32-3.042-6.182-6.42-10.799-11.324-15.519-8.752-8.361-19.455-13.45-32.21-15.29-6.18-.894-7.41-1.158-39.033-1.213z" transform="translate(-71.816 -18.143)" />
+                  <path fill="url(#ig-g)" d="M204.15 18.143c-55.23 0-71.383.057-74.523.317-11.334.943-18.387 2.728-26.07 6.554-5.922 2.942-10.592 6.351-15.201 11.13-8.394 8.716-13.481 19.439-15.323 32.184-.895 6.188-1.156 7.45-1.209 39.056-.02 10.536 0 24.4 0 42.999 0 55.2.062 71.341.326 74.476.916 11.032 2.645 17.973 6.308 25.565 7 14.533 20.37 25.443 36.12 29.514 5.453 1.404 11.476 2.178 19.208 2.544 3.277.142 36.669.244 70.081.244 33.413 0 66.826-.04 70.02-.203 8.954-.422 14.153-1.12 19.901-2.606 15.852-4.09 28.977-14.838 36.12-29.575 3.591-7.409 5.412-14.614 6.236-25.07.18-2.28.255-38.626.255-74.924 0-36.304-.082-72.583-.26-74.863-.835-10.625-2.656-17.77-6.364-25.32-3.042-6.182-6.42-10.799-11.324-15.519-8.752-8.361-19.455-13.45-32.21-15.29-6.18-.894-7.41-1.158-39.033-1.213z" transform="translate(-71.816 -18.143)" />
+                  <path fill="url(#ig-h)" d="M204.15 18.143c-55.23 0-71.383.057-74.523.317-11.334.943-18.387 2.728-26.07 6.554-5.922 2.942-10.592 6.351-15.201 11.13-8.394 8.716-13.481 19.439-15.323 32.184-.895 6.188-1.156 7.45-1.209 39.056-.02 10.536 0 24.4 0 42.999 0 55.2.062 71.341.326 74.476.916 11.032 2.645 17.973 6.308 25.565 7 14.533 20.37 25.443 36.12 29.514 5.453 1.404 11.476 2.178 19.208 2.544 3.277.142 36.669.244 70.081.244 33.413 0 66.826-.04 70.02-.203 8.954-.422 14.153-1.12 19.901-2.606 15.852-4.09 28.977-14.838 36.12-29.575 3.591-7.409 5.412-14.614 6.236-25.07.18-2.28.255-38.626.255-74.924 0-36.304-.082-72.583-.26-74.863-.835-10.625-2.656-17.77-6.364-25.32-3.042-6.182-6.42-10.799-11.324-15.519-8.752-8.361-19.455-13.45-32.21-15.29-6.18-.894-7.41-1.158-39.033-1.213z" transform="translate(-71.816 -18.143)" />
+                  <path fill="#fff" d="M132.345 33.973c-26.716 0-30.07.117-40.563.594-10.472.48-17.62 2.136-23.876 4.567-6.47 2.51-11.958 5.87-17.426 11.335-5.472 5.464-8.834 10.948-11.354 17.412-2.44 6.252-4.1 13.397-4.57 23.858-.47 10.486-.593 13.838-.593 40.535 0 26.697.119 30.037.594 40.522.482 10.465 2.14 17.609 4.57 23.859 2.515 6.465 5.876 11.95 11.346 17.414 5.466 5.468 10.955 8.834 17.42 11.345 6.26 2.431 13.41 4.088 23.881 4.567 10.493.477 13.844.594 40.559.594 26.719 0 30.061-.117 40.555-.594 10.472-.48 17.63-2.136 23.888-4.567 6.468-2.51 11.948-5.877 17.414-11.345 5.472-5.464 8.834-10.949 11.354-17.412 2.419-6.252 4.079-13.398 4.57-23.858.472-10.486.595-13.828.595-40.525s-.123-30.047-.594-40.533c-.492-10.465-2.152-17.608-4.57-23.858-2.521-6.466-5.883-11.95-11.355-17.414-5.472-5.468-10.944-8.827-17.42-11.335-6.271-2.431-13.424-4.088-23.897-4.567-10.493-.477-13.834-.594-40.558-.594zm-8.825 17.715c2.62-.004 5.542 0 8.825 0 26.266 0 29.38.094 39.752.565 9.591.438 14.797 2.04 18.264 3.385 4.591 1.782 7.864 3.912 11.305 7.352 3.443 3.44 5.575 6.717 7.362 11.305 1.346 3.46 2.951 8.663 3.388 18.247.47 10.363.573 13.475.573 39.71 0 26.233-.102 29.346-.573 39.709-.44 9.584-2.042 14.786-3.388 18.247-1.783 4.587-3.919 7.854-7.362 11.292-3.443 3.441-6.712 5.57-11.305 7.352-3.463 1.352-8.673 2.95-18.264 3.388-10.37.47-13.486.573-39.752.573-26.268 0-29.38-.102-39.751-.573-9.592-.443-14.797-2.044-18.267-3.39-4.59-1.781-7.87-3.911-11.313-7.352-3.443-3.44-5.574-6.709-7.362-11.298-1.346-3.461-2.95-8.663-3.387-18.247-.472-10.363-.566-13.476-.566-39.726s.094-29.347.566-39.71c.438-9.584 2.04-14.786 3.387-18.25 1.783-4.588 3.919-7.865 7.362-11.305 3.443-3.441 6.722-5.57 11.313-7.357 3.468-1.351 8.675-2.949 18.267-3.389 9.075-.41 12.592-.532 30.926-.553zm61.337 16.322c-6.518 0-11.805 5.277-11.805 11.792 0 6.512 5.287 11.796 11.805 11.796 6.517 0 11.804-5.284 11.804-11.796 0-6.513-5.287-11.796-11.805-11.796zm-52.512 13.782c-27.9 0-50.519 22.603-50.519 50.482 0 27.879 22.62 50.471 50.52 50.471s50.51-22.592 50.51-50.471c0-27.879-22.613-50.482-50.513-50.482zm0 17.715c18.11 0 32.792 14.67 32.792 32.767 0 18.096-14.683 32.767-32.792 32.767-18.11 0-32.791-14.671-32.791-32.767 0-18.098 14.68-32.767 32.791-32.767z" />
+                </svg>
               </a>
             )}
             {profile.linkedin && (
-              <a href={profile.linkedin} target="_blank" rel="noopener noreferrer" aria-label={`${authorName} on LinkedIn`}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v10M5 5v.1M10 19v-6a4 4 0 0 1 8 0v6M10 10v9"/></svg>
-                <span>LinkedIn</span>
+              <a href={profile.linkedin} class="author-social" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" title="LinkedIn">
+                <svg viewBox="0 0 256 256" aria-hidden="true">
+                  <path fill="#0A66C2" d="M218.123 218.127h-37.931v-59.403c0-14.165-.253-32.4-19.728-32.4-19.756 0-22.779 15.434-22.779 31.369v60.43h-37.93V95.967h36.413v16.694h.51a39.907 39.907 0 0 1 35.928-19.733c38.445 0 45.533 25.288 45.533 58.186l-.016 67.013ZM56.955 79.27c-12.157.002-22.014-9.852-22.016-22.009-.002-12.157 9.851-22.014 22.008-22.016 12.157-.003 22.014 9.851 22.016 22.008A22.013 22.013 0 0 1 56.955 79.27m18.966 138.858H37.95V95.967h37.97v122.16ZM237.033.018H18.89C8.58-.098.125 8.161-.001 18.471v219.053c.122 10.315 8.576 18.582 18.89 18.474h218.144c10.336.128 18.823-8.139 18.966-18.474V18.454c-.147-10.33-8.635-18.588-18.966-18.453" />
+                </svg>
               </a>
             )}
             {profile.x && (
-              <a href={profile.x} target="_blank" rel="noopener noreferrer" aria-label={`${authorName} on X`}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4l16 16M20 4 4 20M4 4h5l11 16h-5z"/></svg>
-                <span> X</span>
+              <a href={profile.x} class="author-social" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" title="X (Twitter)">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="#000" d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z" />
+                </svg>
               </a>
             )}
           </div>
         </div>
-
-        <div class="profile-stat" aria-label={`${totalArticles} published articles`}>
-          <strong>{totalArticles}</strong>
-          <span>{totalArticles === 1 ? "Article published" : "Articles published"}</span>
-        </div>
       </header>
 
-      <section class="author-articles" aria-labelledby="articles-heading">
-        <div class="section-heading">
-          <div>
-            <span class="eyebrow">WRITING & INSIGHTS</span>
-            <h2 id="articles-heading">Articles by {authorName}</h2>
-            <p>Explore the latest guides, explainers and insights from {authorName}.</p>
-          </div>
-          <span class="article-count">{totalArticles} {totalArticles === 1 ? "article" : "articles"}</span>
+      <section class="author-articles-section">
+        <div class="section-title">
+          <h2>Articles by {profile.name} <span>({totalArticles})</span></h2>
         </div>
 
         {totalArticles > 0 && (
-          <div class="article-tools">
-            <div class="search-field" role="search">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+          <div class="author-search" role="search">
+            <div class="search-field">
+              <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3.5-3.5" />
+              </svg>
               <input
                 id="author-search-input"
                 type="search"
-                placeholder={`Search ${authorName}'s articles`}
+                placeholder={Search ${profile.name}'s articles…}
                 autocomplete="off"
-                aria-label={`Search articles by ${authorName}`}
+                spellcheck="false"
+                aria-label={Search articles by ${profile.name}}
               />
-              <kbd id="search-kbd" aria-hidden="true">/</kbd>
-              <button type="button" id="search-clear" aria-label="Clear search" hidden>×</button>
+              <kbd class="search-kbd" id="search-kbd" aria-hidden="true">/</kbd>
+              <button type="button" id="search-clear" class="search-clear" aria-label="Clear search" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
             </div>
 
-            <div class="tool-row">
+            <div class="search-controls">
               {categories.length > 1 && (
-                <div class="category-chips" id="category-chips" role="group" aria-label="Filter articles by category">
-                  <button type="button" class="chip is-active" data-cat="all" aria-pressed="true">All <span>{totalArticles}</span></button>
+                <div class="chips" id="category-chips" role="group" aria-label="Filter by category">
+                  <button type="button" class="chip is-active" data-cat="all" aria-pressed="true">
+                    All <span>{totalArticles}</span>
+                  </button>
                   {categories.map(([cat, count]) => (
                     <button type="button" class="chip" data-cat={cat} aria-pressed="false">
                       {cat.toUpperCase()} <span>{count}</span>
@@ -224,68 +166,94 @@ const schema = [
                 </div>
               )}
 
-              <label class="sort-control">
-                <span>Sort by</span>
-                <select id="sort-select" aria-label="Sort articles">
-                  {sortOptions.map((option) => (
-                    <option value={option.value}>{option.label}</option>
-                  ))}
-                </select>
-              </label>
+              <div class="sort-wrap">
+                <span class="sort-label" id="sort-label">Sort</span>
+                <div class="dropdown" id="sort-dropdown">
+                  <button
+                    type="button"
+                    class="dropdown-trigger"
+                    id="sort-trigger"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                    aria-labelledby="sort-label sort-current"
+                  >
+                    <span id="sort-current">Newest first</span>
+                    <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                  </button>
+
+                  <ul class="dropdown-menu" id="sort-menu" role="listbox" aria-labelledby="sort-label" hidden>
+                    {sortOptions.map((opt) => (
+                      <li
+                        class="dropdown-option"
+                        role="option"
+                        tabindex="-1"
+                        data-value={opt.value}
+                        aria-selected={opt.value === "newest" ? "true" : "false"}
+                      >
+                        <span>{opt.label}</span>
+                        <svg class="check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </div>
-            <p class="search-hint">Search by title, summary or category. Press <kbd>/</kbd> to focus search.</p>
+
+            <p class="search-hint">
+              Tip: use "quotes" for an exact phrase and -word to exclude a word. Small typos are forgiven.
+            </p>
           </div>
         )}
 
         <p id="results-status" class="results-status" aria-live="polite"></p>
 
         {articles.length > 0 ? (
-          <div class="article-list" id="articles-list" data-page-size={PAGE_SIZE}>
-            {articles.map((art, index) => (
+          <div class="topic-articles-list" id="articles-list" data-page-size={PAGE_SIZE}>
+            {articles.map((art, i) => (
               <a
-                class="article-card"
+                class="article-row"
                 href={art.url}
-                hidden={index >= PAGE_SIZE}
+                target="_self"
+                hidden={i >= PAGE_SIZE}
                 data-category={String(art.category || "").toLowerCase()}
                 data-date={art.date}
                 data-read={art.readTime}
               >
-                <div class="card-meta">
-                  <time datetime={art.date}>{formatDate(art.date)}</time>
-                  <span class="meta-dot" aria-hidden="true">·</span>
+                <div class="row-date">
+                  <span>{formatDate(art.date)}</span>
                   <span>{art.readTime} min read</span>
-                  <span class="card-category">{art.category}</span>
+                  <span class="row-category">{art.category.toUpperCase()}</span>
                 </div>
-                <div class="card-copy">
-                  <h3>{art.title}</h3>
+                <div class="row-copy">
+                  <h4>{art.title}</h4>
                   <p>{art.excerpt}</p>
                 </div>
-                <span class="card-arrow" aria-hidden="true">
-                  <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                <span class="row-action" aria-label="Read article">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
                 </span>
               </a>
             ))}
           </div>
         ) : (
           <div class="empty-state">
-            <span class="empty-icon" aria-hidden="true">✦</span>
-            <h3>More articles are on the way</h3>
-            <p>{authorName} has not published any articles yet. Please check back soon.</p>
+            <p>No articles published yet by {profile.name}.</p>
           </div>
         )}
 
         <div class="empty-state no-results" id="no-results" hidden>
-          <h3>No matching articles</h3>
-          <p>Try another search term or clear your filters.</p>
-          <button type="button" id="no-results-clear" class="primary-button">Clear search & filters</button>
+          <p>No articles match your search.</p>
+          <button type="button" id="no-results-clear" class="pagination-link">Clear search & filters</button>
         </div>
 
         {totalArticles > PAGE_SIZE && (
           <div class="load-more-wrap" id="load-more-wrap">
-            <button type="button" id="load-more" class="secondary-button">Load more articles</button>
+            <button type="button" id="load-more" class="pagination-link">Load more</button>
           </div>
         )}
       </section>
+
     </div>
   </main>
 </Layout>
@@ -295,116 +263,417 @@ const schema = [
 
   if (list) {
     const PAGE = Number(list.dataset.pageSize) || 10;
+
     const input = document.getElementById("author-search-input") as HTMLInputElement | null;
     const clearBtn = document.getElementById("search-clear") as HTMLButtonElement | null;
     const kbd = document.getElementById("search-kbd");
-    const chips = document.getElementById("category-chips");
-    const sortSelect = document.getElementById("sort-select") as HTMLSelectElement | null;
-    const status = document.getElementById("results-status");
+    const chipsWrap = document.getElementById("category-chips");
+    const statusEl = document.getElementById("results-status");
     const noResults = document.getElementById("no-results");
-    const resetButton = document.getElementById("no-results-clear");
+    const noResultsClear = document.getElementById("no-results-clear");
     const loadMoreWrap = document.getElementById("load-more-wrap");
-    const loadMoreButton = document.getElementById("load-more") as HTMLButtonElement | null;
+    const loadMoreBtn = document.getElementById("load-more") as HTMLButtonElement | null;
 
-    const rows = Array.from(list.querySelectorAll<HTMLElement>(".article-card")).map((el, index) => ({
-      el,
-      index,
-      title: el.querySelector("h3")?.textContent?.toLowerCase() || "",
-      excerpt: el.querySelector(".card-copy p")?.textContent?.toLowerCase() || "",
-      category: el.dataset.category || "",
-      date: el.dataset.date || "",
-      read: Number(el.dataset.read) || 0,
-    }));
+    // custom sort dropdown
+    const dropdown = document.getElementById("sort-dropdown");
+    const sortTrigger = document.getElementById("sort-trigger") as HTMLButtonElement | null;
+    const sortMenu = document.getElementById("sort-menu") as HTMLElement | null;
+    const sortCurrent = document.getElementById("sort-current");
+    const sortOptionEls = sortMenu
+      ? Array.from(sortMenu.querySelectorAll<HTMLElement>(".dropdown-option"))
+      : [];
 
-    let query = "";
-    let category = "all";
-    let sort = "newest";
-    let shown = PAGE;
-    let timer: number | undefined;
+    // ---------- text helpers ----------
+    const norm = (s: string) =>
+      s
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^\p{L}\p{N}\s]/gu, " ")
+        .replace(/\s+/g, " ")
+        .trim();
 
-    const params = new URLSearchParams(location.search);
-    query = params.get("q") || "";
-    category = params.get("cat") || "all";
-    sort = params.get("sort") || "newest";
-    if (!["newest", "oldest", "shortest", "longest"].includes(sort)) sort = "newest";
-    if (!rows.some((row) => row.category === category)) category = "all";
-    if (input) input.value = query;
-    if (sortSelect) sortSelect.value = sort;
+    const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-    function syncUrl() {
-      const next = new URLSearchParams();
-      if (query.trim()) next.set("q", query.trim());
-      if (category !== "all") next.set("cat", category);
-      if (sort !== "newest") next.set("sort", sort);
-      history.replaceState(null, "", location.pathname + (next.toString() ? `?${next}` : ""));
+    // Edit distance check (small max, early exit)
+    function within(a: string, b: string, max: number) {
+      if (Math.abs(a.length - b.length) > max) return false;
+      let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+      for (let i = 1; i <= a.length; i++) {
+        const curr = [i];
+        let rowMin = i;
+        for (let j = 1; j <= b.length; j++) {
+          const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+          const v = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
+          curr[j] = v;
+          if (v < rowMin) rowMin = v;
+        }
+        if (rowMin > max) return false;
+        prev = curr;
+      }
+      return prev[b.length] <= max;
     }
 
-    function render() {
-      const term = query.trim().toLowerCase();
-      const matched = rows.filter((row) => {
-        const matchesCategory = category === "all" || row.category === category;
-        const haystack = `${row.title} ${row.excerpt} ${row.category}`;
-        return matchesCategory && (!term || haystack.includes(term));
+    // ---------- index built from the rendered rows ----------
+    const records = Array.from(list.querySelectorAll<HTMLElement>(".article-row")).map((el, i) => {
+      const titleEl = el.querySelector("h4") as HTMLElement;
+      const excerptEl = el.querySelector(".row-copy p") as HTMLElement;
+      const title = titleEl?.textContent ?? "";
+      const excerpt = excerptEl?.textContent ?? "";
+      const category = el.dataset.category ?? "";
+      const nTitle = norm(title);
+      const nExcerpt = norm(excerpt);
+      return {
+        el,
+        i,
+        titleEl,
+        excerptEl,
+        title,
+        excerpt,
+        category,
+        date: el.dataset.date ?? "",
+        read: Number(el.dataset.read) || 0,
+        nTitle,
+        nExcerpt,
+        nCat: norm(category),
+        wTitle: nTitle.split(" ").filter(Boolean),
+        wExcerpt: nExcerpt.split(" ").filter(Boolean),
+      };
+    });
+
+    type Rec = (typeof records)[number];
+
+    // ---------- query parsing ----------
+    function parseQuery(raw: string) {
+      const phrases: string[] = [];
+      const excluded: string[] = [];
+      const terms: string[] = [];
+
+      const rest = raw.replace(/(-?)"([^"]+)"/g, (_m, neg: string, p: string) => {
+        const n = norm(p);
+        if (n) (neg ? excluded : phrases).push(n);
+        return " ";
       });
 
-      matched.sort((a, b) => {
-        if (sort === "oldest") return a.date.localeCompare(b.date) || a.index - b.index;
-        if (sort === "shortest") return a.read - b.read || b.date.localeCompare(a.date);
-        if (sort === "longest") return b.read - a.read || b.date.localeCompare(a.date);
-        return b.date.localeCompare(a.date) || a.index - b.index;
-      });
-
-      const visible = Math.min(shown, matched.length);
-      const matchedSet = new Set(matched);
-      const fragment = document.createDocumentFragment();
-
-      matched.forEach((row, index) => {
-        row.el.hidden = index >= shown;
-        fragment.appendChild(row.el);
-      });
-      rows.forEach((row) => {
-        if (!matchedSet.has(row)) {
-          row.el.hidden = true;
-          fragment.appendChild(row.el);
+      rest.split(/\s+/).forEach((tok) => {
+        if (!tok) return;
+        if (tok.startsWith("-") && tok.length > 1) {
+          const n = norm(tok.slice(1));
+          if (n) excluded.push(n);
+        } else {
+          norm(tok)
+            .split(" ")
+            .forEach((w) => w && terms.push(w));
         }
       });
-      list.appendChild(fragment);
 
-      list.hidden = matched.length === 0;
-      if (noResults) noResults.hidden = matched.length !== 0;
-      if (status) {
-        status.textContent = matched.length
-          ? `Showing ${visible} of ${matched.length} ${matched.length === 1 ? "article" : "articles"}`
-          : "";
-      }
-      if (loadMoreWrap && loadMoreButton) {
-        loadMoreWrap.hidden = matched.length <= visible;
-        loadMoreButton.textContent = `Load more (${matched.length - visible} remaining)`;
-      }
-      if (clearBtn) clearBtn.hidden = !query;
-      if (kbd) kbd.hidden = Boolean(query);
+      return { phrases, excluded, terms };
+    }
 
-      chips?.querySelectorAll<HTMLButtonElement>(".chip").forEach((chip) => {
-        const active = chip.dataset.cat === category;
-        chip.classList.toggle("is-active", active);
-        chip.setAttribute("aria-pressed", String(active));
+    function scoreTerm(r: Rec, t: string) {
+      let s = 0;
+      if (r.wTitle.includes(t)) s += 12;
+      else if (r.wTitle.some((w) => w.startsWith(t))) s += 9;
+      else if (r.nTitle.includes(t)) s += 6;
+
+      if (r.nCat.includes(t)) s += 5;
+
+      if (r.wExcerpt.includes(t)) s += 4;
+      else if (r.wExcerpt.some((w) => w.startsWith(t))) s += 3;
+      else if (r.nExcerpt.includes(t)) s += 1.5;
+
+      // typo tolerance
+      if (s === 0 && t.length >= 4) {
+        const max = t.length >= 8 ? 2 : 1;
+        if (r.wTitle.some((w) => within(w, t, max))) s += 4;
+        else if (r.wExcerpt.some((w) => within(w, t, max))) s += 2;
+      }
+      return s;
+    }
+
+    function scoreRecord(r: Rec, q: ReturnType<typeof parseQuery>): number | null {
+      for (const ex of q.excluded) {
+        if (r.nTitle.includes(ex) || r.nExcerpt.includes(ex) || r.nCat.includes(ex)) return null;
+      }
+
+      let total = 0;
+
+      for (const p of q.phrases) {
+        if (r.nTitle.includes(p)) total += 15;
+        else if (r.nExcerpt.includes(p)) total += 8;
+        else if (r.nCat.includes(p)) total += 6;
+        else return null;
+      }
+
+      for (const t of q.terms) {
+        const s = scoreTerm(r, t);
+        if (s === 0) return null; // every word must match somewhere
+        total += s;
+      }
+
+      return total;
+    }
+
+    // ---------- highlighting ----------
+    function highlight(el: HTMLElement, text: string, re: RegExp | null) {
+      el.textContent = "";
+      if (!re) {
+        el.textContent = text;
+        return;
+      }
+      let last = 0;
+      for (const m of text.matchAll(re)) {
+        const idx = m.index ?? 0;
+        if (idx > last) el.append(text.slice(last, idx));
+        const mark = document.createElement("mark");
+        mark.textContent = m[0];
+        el.append(mark);
+        last = idx + m[0].length;
+      }
+      if (last < text.length) el.append(text.slice(last));
+    }
+
+    // ---------- state ----------
+    let query = "";
+    let activeCat = "all";
+    let sortValue = "newest";
+    let userSorted = false;
+    let shown = PAGE;
+    let debounceTimer: number | undefined;
+
+    const SORT_MODES = ["relevance", "newest", "oldest", "shortest", "longest"];
+
+    const params = new URLSearchParams(location.search);
+    query = params.get("q") ?? "";
+    activeCat = (params.get("cat") ?? "all").toLowerCase();
+    if (!records.some((r) => r.category === activeCat)) activeCat = "all";
+    const urlSort = params.get("sort");
+    if (urlSort && SORT_MODES.includes(urlSort)) {
+      sortValue = urlSort;
+      userSorted = true;
+    }
+    if (input) input.value = query;
+
+    function syncUrl() {
+      const p = new URLSearchParams();
+      if (query.trim()) p.set("q", query.trim());
+      if (activeCat !== "all") p.set("cat", activeCat);
+      if (userSorted) p.set("sort", sortValue);
+      const qs = p.toString();
+      history.replaceState(null, "", location.pathname + (qs ? ?${qs} : ""));
+    }
+
+    function sortResults(items: { r: Rec; score: number }[], mode: string) {
+      const byDateDesc = (a: Rec, b: Rec) => (a.date < b.date ? 1 : a.date > b.date ? -1 : a.i - b.i);
+      items.sort((x, y) => {
+        switch (mode) {
+          case "relevance":
+            return y.score - x.score || byDateDesc(x.r, y.r);
+          case "oldest":
+            return -byDateDesc(x.r, y.r);
+          case "shortest":
+            return x.r.read - y.r.read || byDateDesc(x.r, y.r);
+          case "longest":
+            return y.r.read - x.r.read || byDateDesc(x.r, y.r);
+          default:
+            return byDateDesc(x.r, y.r);
+        }
       });
     }
 
-    function reset() {
+    // ---------- custom dropdown ----------
+    function updateSortUI(mode: string, hasQuery: boolean) {
+      sortOptionEls.forEach((opt) => {
+        const val = opt.dataset.value;
+        const selected = val === mode;
+        opt.setAttribute("aria-selected", String(selected));
+        opt.classList.toggle("is-selected", selected);
+
+        if (val === "relevance") {
+          opt.setAttribute("aria-disabled", String(!hasQuery));
+          opt.classList.toggle("is-disabled", !hasQuery);
+        }
+        if (selected && sortCurrent) {
+          sortCurrent.textContent = opt.querySelector("span")?.textContent ?? "";
+        }
+      });
+    }
+
+    const enabledOptions = () => sortOptionEls.filter((o) => o.getAttribute("aria-disabled") !== "true");
+
+    function openMenu() {
+      if (!sortMenu || !sortTrigger) return;
+      sortMenu.hidden = false;
+      sortTrigger.setAttribute("aria-expanded", "true");
+      dropdown?.classList.add("is-open");
+      const target = sortOptionEls.find((o) => o.getAttribute("aria-selected") === "true") ?? enabledOptions()[0];
+      target?.focus();
+    }
+
+    function closeMenu(returnFocus = false) {
+      if (!sortMenu || !sortTrigger) return;
+      sortMenu.hidden = true;
+      sortTrigger.setAttribute("aria-expanded", "false");
+      dropdown?.classList.remove("is-open");
+      if (returnFocus) sortTrigger.focus();
+    }
+
+    function chooseOption(opt: HTMLElement) {
+      if (opt.getAttribute("aria-disabled") === "true") return;
+      sortValue = opt.dataset.value ?? "newest";
+      userSorted = true;
+      shown = PAGE;
+      syncUrl();
+      render();
+      closeMenu(true);
+    }
+
+    sortTrigger?.addEventListener("click", () => {
+      if (sortMenu?.hidden) openMenu();
+      else closeMenu();
+    });
+
+    sortTrigger?.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        openMenu();
+      }
+    });
+
+    sortMenu?.addEventListener("click", (e) => {
+      const opt = (e.target as HTMLElement).closest<HTMLElement>(".dropdown-option");
+      if (opt) chooseOption(opt);
+    });
+
+    sortMenu?.addEventListener("keydown", (e) => {
+      const opts = enabledOptions();
+      const idx = opts.indexOf(document.activeElement as HTMLElement);
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        opts[(idx + 1) % opts.length]?.focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        opts[(idx - 1 + opts.length) % opts.length]?.focus();
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        opts[0]?.focus();
+      } else if (e.key === "End") {
+        e.preventDefault();
+        opts[opts.length - 1]?.focus();
+      } else if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        const opt = document.activeElement as HTMLElement;
+        if (opt?.classList.contains("dropdown-option")) chooseOption(opt);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        closeMenu(true);
+      } else if (e.key === "Tab") {
+        closeMenu();
+      }
+    });
+
+    document.addEventListener("click", (e) => {
+      if (dropdown && !dropdown.contains(e.target as Node)) closeMenu();
+    });
+
+    // ---------- render ----------
+    function render() {
+      const q = parseQuery(query);
+      const hasQuery = q.phrases.length + q.terms.length + q.excluded.length > 0;
+      const filtered = hasQuery || activeCat !== "all";
+
+      let mode = userSorted ? sortValue : hasQuery ? "relevance" : "newest";
+      if (mode === "relevance" && !hasQuery) mode = "newest";
+      updateSortUI(mode, hasQuery);
+
+      // match
+      const matched: { r: Rec; score: number }[] = [];
+      for (const r of records) {
+        if (activeCat !== "all" && r.category !== activeCat) continue;
+        if (!hasQuery) {
+          matched.push({ r, score: 0 });
+          continue;
+        }
+        const s = scoreRecord(r, q);
+        if (s !== null) matched.push({ r, score: s });
+      }
+
+      sortResults(matched, mode);
+
+      // highlight regex
+      const hlTerms = [...q.phrases, ...q.terms].filter(Boolean).sort((a, b) => b.length - a.length);
+      const re = hlTerms.length ? new RegExp((${hlTerms.map(escapeRe).join("|")}), "gi") : null;
+
+      const matchedSet = new Set(matched.map((m) => m.r));
+      const frag = document.createDocumentFragment();
+
+      matched.forEach(({ r }, idx) => {
+        highlight(r.titleEl, r.title, re);
+        highlight(r.excerptEl, r.excerpt, re);
+        r.el.hidden = idx >= shown;
+        frag.appendChild(r.el);
+      });
+
+      records.forEach((r) => {
+        if (!matchedSet.has(r)) {
+          r.el.hidden = true;
+          frag.appendChild(r.el);
+        }
+      });
+
+      list.appendChild(frag);
+
+      // status + controls
+      const total = matched.length;
+      const visible = Math.min(shown, total);
+
+      if (statusEl) {
+        if (total === 0) {
+          statusEl.textContent = "";
+        } else if (filtered) {
+          statusEl.textContent =
+            ${total} ${total === 1 ? "article" : "articles"} found +
+            (total > visible ?  · showing ${visible} : "");
+        } else {
+          statusEl.textContent = Showing ${visible} of ${total} articles;
+        }
+      }
+
+      list.hidden = total === 0;
+      if (noResults) noResults.hidden = total !== 0;
+
+      if (loadMoreWrap && loadMoreBtn) {
+        const remaining = total - visible;
+        loadMoreWrap.hidden = remaining <= 0;
+        loadMoreBtn.textContent = Load more (${remaining} remaining);
+      }
+
+      if (clearBtn) clearBtn.hidden = !query;
+      if (kbd) kbd.hidden = !!query;
+
+      chipsWrap?.querySelectorAll<HTMLButtonElement>(".chip").forEach((chip) => {
+        const on = chip.dataset.cat === activeCat;
+        chip.classList.toggle("is-active", on);
+        chip.setAttribute("aria-pressed", String(on));
+      });
+    }
+
+    function resetAll() {
       query = "";
-      category = "all";
-      sort = "newest";
+      activeCat = "all";
+      userSorted = false;
+      sortValue = "newest";
       shown = PAGE;
       if (input) input.value = "";
-      if (sortSelect) sortSelect.value = sort;
       syncUrl();
       render();
     }
 
+    // ---------- events ----------
     input?.addEventListener("input", () => {
-      window.clearTimeout(timer);
-      timer = window.setTimeout(() => {
+      window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(() => {
         query = input.value;
         shown = PAGE;
         syncUrl();
@@ -412,13 +681,17 @@ const schema = [
       }, 100);
     });
 
-    input?.addEventListener("keydown", (event) => {
-      if (event.key === "Escape" && input.value) {
-        input.value = "";
-        query = "";
-        shown = PAGE;
-        syncUrl();
-        render();
+    input?.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        if (input.value) {
+          input.value = "";
+          query = "";
+          shown = PAGE;
+          syncUrl();
+          render();
+        } else {
+          input.blur();
+        }
       }
     });
 
@@ -431,33 +704,28 @@ const schema = [
       input?.focus();
     });
 
-    chips?.addEventListener("click", (event) => {
-      const chip = (event.target as HTMLElement).closest<HTMLButtonElement>(".chip");
+    chipsWrap?.addEventListener("click", (e) => {
+      const chip = (e.target as HTMLElement).closest<HTMLButtonElement>(".chip");
       if (!chip) return;
-      category = chip.dataset.cat || "all";
+      activeCat = chip.dataset.cat ?? "all";
       shown = PAGE;
       syncUrl();
       render();
     });
 
-    sortSelect?.addEventListener("change", () => {
-      sort = sortSelect.value;
-      shown = PAGE;
-      syncUrl();
-      render();
-    });
+    noResultsClear?.addEventListener("click", resetAll);
 
-    resetButton?.addEventListener("click", reset);
-    loadMoreButton?.addEventListener("click", () => {
+    loadMoreBtn?.addEventListener("click", () => {
       shown += PAGE;
       render();
     });
 
-    document.addEventListener("keydown", (event) => {
-      if (event.key !== "/" || event.ctrlKey || event.metaKey || event.altKey) return;
-      const target = event.target as HTMLElement;
-      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable)) return;
-      event.preventDefault();
+    // "/" focuses the search box
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target as HTMLElement;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+      e.preventDefault();
       input?.focus();
     });
 
@@ -466,234 +734,147 @@ const schema = [
 </script>
 
 <style>
-  .author-page {
-    --a-primary: var(--color-primary, #7654d6);
-    --a-primary-hover: #5f3fc0;
-    --a-ink: var(--color-ink, #121212);
-    --a-muted: var(--color-purple-muted, #625d6b);
-    --a-border: var(--color-border, #e9e7ef);
-    --a-soft: var(--color-surface-soft, #faf9fc);
-    --a-white: var(--color-white, #fff);
-    background: var(--a-white);
-    color: var(--a-ink);
-    font-family: var(--font-primary);
-    line-height: 1.618;
-    padding: clamp(34px, 5vw, 64px) 0 88px;
-    overflow-wrap: anywhere;
+  .author-profile-page {
+    background: var(--color-white, #fff);
+    color: var(--color-ink, #121212);
+    padding: 56px 0 88px;
   }
 
-  .author-page *,
-  .author-page *::before,
-  .author-page *::after { box-sizing: border-box; }
-
-  .author-container {
-    width: min(1120px, calc(100% - 48px));
+  .articles-container {
+    width: min(1160px, calc(100% - 64px));
     margin-inline: auto;
   }
 
-  .breadcrumbs {
+  .author-header {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 10px;
-    margin-bottom: 26px;
-    color: var(--a-muted);
-    font-size: .84rem;
+    gap: 32px;
+    align-items: flex-start;
+    padding-bottom: 40px;
+    border-bottom: 1px solid var(--color-border, #e9e7ef);
   }
 
-  .breadcrumbs a {
-    color: var(--a-primary);
-    text-decoration: none;
-  }
-
-  .breadcrumbs a:hover { text-decoration: underline; }
-
-  .profile-hero {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: clamp(30px, 5vw, 56px) clamp(20px, 5vw, 64px);
-    border: 1px solid var(--a-border);
-    border-radius: 22px;
-    background:
-      radial-gradient(ellipse at 50% 0%, rgba(118, 84, 214, .09), transparent 62%),
-      var(--a-white);
-    text-align: center;
-    box-shadow: 0 12px 40px rgba(36, 25, 72, .045);
-  }
-
-  .profile-avatar-shell {
-    width: 152px;
-    height: 152px;
-    padding: 5px;
-    border: 1px solid #ded5fb;
-    border-radius: 50%;
-    background: linear-gradient(145deg, #f2edff, #fff);
-    box-shadow: 0 8px 28px rgba(80, 56, 150, .12);
-  }
-
-  .profile-avatar {
-    display: block;
-    width: 100%;
-    height: 100%;
+  .author-avatar {
+    width: 96px;
+    height: 96px;
     border-radius: 50%;
     object-fit: cover;
+    border: 2px solid var(--color-purple-border, #e5dcff);
   }
 
-  .profile-avatar-fallback {
+  .author-avatar-placeholder {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: var(--color-primary, #7654d6);
+    color: #fff;
+    font-size: 2.2rem;
+    font-weight: 700;
     display: grid;
     place-items: center;
-    background: var(--a-primary);
-    color: #fff;
-    font-size: 3.4rem;
-    font-weight: 700;
   }
 
-  .profile-content { width: min(100%, 760px); }
-
-  .eyebrow {
-    display: inline-block;
-    margin-top: 22px;
-    color: var(--a-primary);
-    font-size: .72rem;
-    font-weight: 750;
-    letter-spacing: .15em;
-  }
-
-  .profile-content h1 {
-    margin: 7px 0 0;
-    color: var(--a-ink);
-    font-size: clamp(2.1rem, 5vw, 3.25rem);
-    font-weight: 650;
-    letter-spacing: -.055em;
-    line-height: 1.12;
-    text-wrap: balance;
-  }
-
-  .profile-handle {
-    margin: 9px 0 0;
-    color: var(--a-primary);
-    font-size: .96rem;
-    font-weight: 600;
-  }
-
-  .profile-description {
-    max-width: 680px;
-    margin: 18px auto 0;
-    color: var(--a-muted);
-    font-size: clamp(1rem, 1.5vw, 1.1rem);
-    line-height: 1.8;
-    text-wrap: pretty;
-  }
-
-  .profile-socials {
+  .author-title-block h1 {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 10px;
-    margin-top: 24px;
-  }
-
-  .profile-socials a {
-    display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 40px;
-    padding: 8px 13px;
-    border: 1px solid var(--a-border);
-    border-radius: 999px;
-    background: var(--a-white);
-    color: var(--a-ink);
-    font-size: .83rem;
-    font-weight: 600;
-    text-decoration: none;
-    transition: border-color 180ms ease, color 180ms ease, transform 180ms ease;
-  }
-
-  .profile-socials a:hover,
-  .profile-socials a:focus-visible {
-    border-color: var(--a-primary);
-    color: var(--a-primary);
-    transform: translateY(-2px);
-    outline: none;
-  }
-
-  .profile-socials svg {
-    width: 17px;
-    height: 17px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .profile-socials .social-fill { fill: currentColor; stroke: none; }
-
-  .profile-stat {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    margin-top: 30px;
-    padding: 10px 18px;
-    border: 1px solid #e4dcfb;
-    border-radius: 999px;
-    background: #faf8ff;
-  }
-
-  .profile-stat strong {
-    color: var(--a-primary);
-    font-size: 1.15rem;
-    line-height: 1;
-  }
-
-  .profile-stat span {
-    color: var(--a-muted);
-    font-size: .8rem;
-    font-weight: 600;
-  }
-
-  .author-articles { margin-top: clamp(48px, 6vw, 72px); }
-
-  .section-heading {
-    display: flex;
-    align-items: end;
-    justify-content: space-between;
-    gap: 24px;
-    margin-bottom: 25px;
-    padding-bottom: 22px;
-    border-bottom: 1px solid var(--a-border);
-  }
-
-  .section-heading .eyebrow { margin: 0 0 8px; }
-
-  .section-heading h2 {
     margin: 0;
-    color: var(--a-ink);
-    font-size: clamp(1.65rem, 3vw, 2.2rem);
-    font-weight: 650;
-    letter-spacing: -.045em;
+    font-size: 2.1rem;
+    font-weight: 700;
+    letter-spacing: -.03em;
     line-height: 1.2;
   }
 
-  .section-heading p {
-    margin: 9px 0 0;
-    color: var(--a-muted);
-    font-size: .94rem;
-  }
-
-  .article-count {
+  /* verified badge */
+  .verified-badge {
+    display: inline-flex;
     flex-shrink: 0;
-    padding: 7px 12px;
-    border: 1px solid var(--a-border);
-    border-radius: 999px;
-    color: var(--a-muted);
-    font-size: .8rem;
-    font-weight: 650;
+    width: 24px;
+    height: 24px;
+    margin-top: 4px;
+    cursor: default;
   }
 
-  .article-tools { margin-bottom: 20px; }
+  .verified-badge svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .vb-shape {
+    fill: var(--color-primary, #7654d6);
+  }
+
+  .vb-check {
+    fill: #fff;
+  }
+
+  .author-handle {
+    display: block;
+    margin-top: 4px;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .author-desc {
+    margin: 12px 0 16px;
+    color: var(--color-purple-muted, #625d6b);
+    max-width: 680px;
+    line-height: 1.65;
+    font-size: .98rem;
+  }
+
+  .author-socials {
+    display: flex;
+    gap: 10px;
+  }
+
+  .author-socials .author-social {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    text-decoration: none;
+    transition: transform 180ms ease, opacity 180ms ease;
+  }
+
+  .author-socials .author-social svg {
+    width: 28px;
+    height: 28px;
+    display: block;
+  }
+
+  .author-socials .author-social:hover,
+  .author-socials .author-social:focus-visible {
+    transform: translateY(-3px) scale(1.08);
+    outline: none;
+  }
+
+  .author-articles-section {
+    padding-top: 40px;
+  }
+
+  .section-title h2 {
+    margin: 0 0 24px;
+    font-size: 1.5rem;
+    font-weight: 680;
+    letter-spacing: -.03em;
+  }
+
+  .section-title span {
+    color: var(--color-purple-muted, #625d6b);
+    font-weight: 500;
+  }
+
+  /* ---------- search ---------- */
+  .author-search {
+    margin-bottom: 20px;
+  }
 
   .search-field {
     position: relative;
@@ -701,349 +882,472 @@ const schema = [
     align-items: center;
   }
 
-  .search-field > svg {
+  .search-icon {
     position: absolute;
-    left: 17px;
-    width: 19px;
-    height: 19px;
+    left: 18px;
+    width: 18px;
+    height: 18px;
     fill: none;
-    stroke: var(--a-muted);
-    stroke-width: 1.8;
+    stroke: var(--color-purple-muted, #625d6b);
+    stroke-width: 2;
     stroke-linecap: round;
     pointer-events: none;
   }
 
   #author-search-input {
     width: 100%;
-    min-height: 54px;
-    padding: 13px 60px 13px 48px;
-    border: 1px solid var(--a-border);
-    border-radius: 13px;
-    background: var(--a-white);
-    color: var(--a-ink);
+    padding: 15px 56px 15px 48px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 14px;
+    background: var(--color-white, #fff);
+    color: inherit;
     font: inherit;
-    font-size: .95rem;
+    font-size: 1rem;
     outline: none;
-    appearance: none;
     transition: border-color 180ms ease, box-shadow 180ms ease;
+    -webkit-appearance: none;
+    appearance: none;
   }
 
-  #author-search-input::placeholder { color: var(--a-muted); opacity: .75; }
+  #author-search-input::-webkit-search-cancel-button,
+  #author-search-input::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  #author-search-input::placeholder {
+    color: var(--color-purple-muted, #625d6b);
+    opacity: .75;
+  }
 
   #author-search-input:focus {
-    border-color: var(--a-primary);
-    box-shadow: 0 0 0 4px rgba(118, 84, 214, .11);
+    border-color: var(--color-primary, #7654d6);
+    box-shadow: 0 0 0 4px rgba(118, 84, 214, 0.12);
   }
 
-  #author-search-input::-webkit-search-cancel-button { appearance: none; }
-
-  #search-kbd {
+  .search-kbd {
     position: absolute;
-    right: 15px;
-    padding: 2px 8px;
-    border: 1px solid var(--a-border);
+    right: 16px;
+    min-width: 24px;
+    padding: 2px 7px;
+    border: 1px solid var(--color-border, #e9e7ef);
     border-radius: 6px;
-    background: var(--a-soft);
-    color: var(--a-muted);
+    background: #faf9fd;
+    color: var(--color-purple-muted, #625d6b);
     font: inherit;
     font-size: .78rem;
+    font-weight: 600;
+    text-align: center;
   }
 
-  #search-clear {
+  .search-kbd[hidden],
+  .search-clear[hidden] {
+    display: none;
+  }
+
+  .search-clear {
     position: absolute;
-    right: 12px;
-    width: 30px;
-    height: 30px;
+    right: 10px;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
     border: 0;
     border-radius: 50%;
-    background: var(--a-soft);
-    color: var(--a-muted);
-    font-size: 1.3rem;
+    background: transparent;
+    color: var(--color-purple-muted, #625d6b);
     cursor: pointer;
+    transition: background 150ms ease;
   }
 
-  #search-clear[hidden], #search-kbd[hidden] { display: none; }
+  .search-clear:hover {
+    background: #f1edfb;
+  }
 
-  .tool-row {
+  .search-clear svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .search-controls {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
     margin-top: 14px;
+    flex-wrap: wrap;
   }
 
-  .category-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
 
   .chip {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
-    padding: 7px 13px;
-    border: 1px solid var(--a-border);
+    gap: 6px;
+    padding: 6px 14px;
+    border: 1px solid var(--color-border, #e9e7ef);
     border-radius: 999px;
-    background: var(--a-white);
-    color: var(--a-ink);
+    background: var(--color-white, #fff);
+    color: var(--color-ink, #121212);
     font: inherit;
-    font-size: .78rem;
-    font-weight: 650;
+    font-size: .82rem;
+    font-weight: 600;
     cursor: pointer;
     transition: all 160ms ease;
   }
 
-  .chip span { color: var(--a-muted); font-weight: 500; }
+  .chip span {
+    color: var(--color-purple-muted, #625d6b);
+    font-weight: 500;
+  }
 
-  .chip:hover { border-color: #cbbcf5; color: var(--a-primary); }
+  .chip:hover {
+    border-color: var(--color-purple-border, #d9ccff);
+  }
 
   .chip.is-active {
-    border-color: var(--a-primary);
-    background: var(--a-primary);
+    background: var(--color-primary, #7654d6);
+    border-color: var(--color-primary, #7654d6);
     color: #fff;
   }
 
-  .chip.is-active span { color: rgba(255,255,255,.8); }
+  .chip.is-active span {
+    color: rgba(255, 255, 255, .8);
+  }
 
-  .sort-control {
+  /* ---------- custom sort dropdown ---------- */
+  .sort-wrap {
     display: inline-flex;
-    flex-shrink: 0;
     align-items: center;
-    gap: 9px;
-    color: var(--a-muted);
-    font-size: .82rem;
+    gap: 10px;
+    margin-left: auto;
+  }
+
+  .sort-label {
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .85rem;
     font-weight: 600;
   }
 
-  .sort-control select {
-    min-height: 38px;
-    padding: 7px 30px 7px 11px;
-    border: 1px solid var(--a-border);
-    border-radius: 9px;
-    background: var(--a-white);
-    color: var(--a-ink);
-    font: inherit;
-    cursor: pointer;
+  .dropdown {
+    position: relative;
   }
 
-  .search-hint {
-    margin: 10px 0 0;
-    color: var(--a-muted);
-    font-size: .78rem;
-  }
-
-  .search-hint kbd {
-    padding: 1px 5px;
-    border: 1px solid var(--a-border);
-    border-radius: 4px;
-    background: var(--a-soft);
-  }
-
-  .results-status {
-    min-height: 1.3em;
-    margin: 0 0 12px;
-    color: var(--a-muted);
-    font-size: .82rem;
-  }
-
-  .article-list { display: flex; flex-direction: column; gap: 12px; }
-  .article-list[hidden] { display: none; }
-
-  .article-card {
-    display: grid;
-    grid-template-columns: minmax(150px, 190px) minmax(0, 1fr) 42px;
+  .dropdown-trigger {
+    display: inline-flex;
     align-items: center;
-    gap: 22px;
-    padding: 23px 25px;
-    border: 1px solid var(--a-border);
-    border-radius: 15px;
-    background: var(--a-white);
-    color: inherit;
-    text-decoration: none;
-    transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
-  }
-
-  .article-card[hidden] { display: none; }
-
-  .article-card:hover,
-  .article-card:focus-visible {
-    border-color: #d4c7f8;
-    box-shadow: 0 9px 26px rgba(36, 25, 72, .065);
-    transform: translateY(-2px);
+    gap: 10px;
+    min-width: 150px;
+    justify-content: space-between;
+    padding: 8px 14px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 10px;
+    background: var(--color-white, #fff);
+    color: var(--color-ink, #121212);
+    font: inherit;
+    font-size: .88rem;
+    font-weight: 600;
+    cursor: pointer;
     outline: none;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
   }
 
-  .card-meta {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 5px;
-    color: var(--a-muted);
-    font-size: .78rem;
+  .dropdown-trigger:hover {
+    border-color: var(--color-purple-border, #d9ccff);
   }
 
-  .meta-dot { display: none; }
-
-  .card-category {
-    margin-top: 3px;
-    color: var(--a-primary);
-    font-size: .72rem;
-    font-weight: 750;
-    letter-spacing: .04em;
-    text-transform: uppercase;
+  .dropdown-trigger:focus-visible,
+  .dropdown.is-open .dropdown-trigger {
+    border-color: var(--color-primary, #7654d6);
+    box-shadow: 0 0 0 4px rgba(118, 84, 214, 0.12);
   }
 
-  .card-copy { min-width: 0; }
-
-  .card-copy h3 {
-    margin: 0;
-    color: var(--a-ink);
-    font-size: clamp(1.08rem, 1.7vw, 1.28rem);
-    font-weight: 650;
-    letter-spacing: -.028em;
-    line-height: 1.35;
-    transition: color 180ms ease;
-  }
-
-  .article-card:hover .card-copy h3 { color: var(--a-primary); }
-
-  .card-copy p {
-    max-width: 760px;
-    margin: 7px 0 0;
-    color: var(--a-muted);
-    font-size: .9rem;
-    line-height: 1.65;
-  }
-
-  .card-arrow {
-    display: grid;
-    width: 40px;
-    height: 40px;
-    place-items: center;
-    border: 1px solid var(--a-border);
-    border-radius: 50%;
-    color: var(--a-primary);
-    transition: background 180ms ease, color 180ms ease, border-color 180ms ease;
-  }
-
-  .card-arrow svg {
-    width: 17px;
-    height: 17px;
+  .chev {
+    width: 16px;
+    height: 16px;
     fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
+    stroke: var(--color-primary, #7654d6);
+    stroke-width: 2.2;
     stroke-linecap: round;
     stroke-linejoin: round;
     transition: transform 180ms ease;
   }
 
-  .article-card:hover .card-arrow {
-    border-color: var(--a-primary);
-    background: var(--a-primary);
-    color: #fff;
+  .dropdown.is-open .chev {
+    transform: rotate(180deg);
   }
 
-  .article-card:hover .card-arrow svg { transform: translateX(3px); }
+  .dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 30;
+    min-width: 100%;
+    width: max-content;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 14px;
+    background: var(--color-white, #fff);
+    box-shadow: 0 16px 40px rgba(36, 25, 72, 0.12);
+    animation: dropdown-in 140ms ease;
+  }
+
+  .dropdown-menu[hidden] {
+    display: none;
+  }
+
+  @keyframes dropdown-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .dropdown-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 9px 12px;
+    border-radius: 9px;
+    color: var(--color-ink, #121212);
+    font-size: .88rem;
+    font-weight: 550;
+    cursor: pointer;
+    outline: none;
+    transition: background 140ms ease, color 140ms ease;
+  }
+
+  .dropdown-option:hover,
+  .dropdown-option:focus-visible {
+    background: rgba(118, 84, 214, 0.08);
+    color: var(--color-primary, #7654d6);
+  }
+
+  .dropdown-option.is-selected {
+    color: var(--color-primary, #7654d6);
+    font-weight: 700;
+  }
+
+  .dropdown-option.is-disabled {
+    color: var(--color-purple-muted, #625d6b);
+    opacity: .45;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  .dropdown-option .check {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: var(--color-primary, #7654d6);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0;
+  }
+
+  .dropdown-option.is-selected .check {
+    opacity: 1;
+  }
+
+  .search-hint {
+    margin: 12px 0 0;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .8rem;
+    opacity: .85;
+  }
+
+  .results-status {
+    margin: 0 0 14px;
+    min-height: 1.2em;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .88rem;
+    font-weight: 500;
+  }
+
+  /* highlight (marks are created by JS, so they need :global) */
+  .row-copy :global(mark) {
+    background: rgba(118, 84, 214, 0.16);
+    color: inherit;
+    padding: 0 2px;
+    border-radius: 3px;
+  }
+
+  /* ---------- list ---------- */
+  .topic-articles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .topic-articles-list[hidden] {
+    display: none;
+  }
+
+  .article-row {
+    display: grid;
+    grid-template-columns: 168px minmax(0, 1fr) 42px;
+    gap: 26px;
+    align-items: center;
+    padding: 22px 26px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 15px;
+    background: var(--color-white, #fff);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color 200ms ease, box-shadow 200ms ease;
+  }
+
+  /* display:grid overrides the hidden attribute, so force it */
+  .article-row[hidden] {
+    display: none;
+  }
+
+  .article-row:hover {
+    border-color: var(--color-purple-border, #d9ccff);
+    box-shadow: 0 8px 24px rgba(36, 25, 72, 0.055);
+  }
+
+  .row-date {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .8rem;
+  }
+
+  .row-category {
+    color: var(--color-primary, #7654d6);
+    font-weight: 700;
+    font-size: .74rem;
+  }
+
+  .row-copy h4 {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 650;
+  }
+
+  .row-copy p {
+    margin: 6px 0 0;
+    color: var(--color-purple-muted, #625d6b);
+    font-size: .9rem;
+  }
+
+  .row-action {
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 50%;
+    color: var(--color-primary, #7654d6);
+  }
+
+  .row-action svg {
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
 
   .empty-state {
-    padding: 38px 24px;
-    border: 1px solid var(--a-border);
-    border-radius: 16px;
-    background: var(--a-soft);
-    color: var(--a-muted);
-    text-align: center;
+    padding: 36px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 15px;
+    color: var(--color-purple-muted, #625d6b);
   }
-
-  .empty-state h3 {
-    margin: 8px 0;
-    color: var(--a-ink);
-    font-size: 1.15rem;
-  }
-
-  .empty-state p { margin: 0; font-size: .9rem; }
-  .empty-icon { color: var(--a-primary); font-size: 1.6rem; }
-  .no-results[hidden] { display: none; }
 
   .no-results {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 8px;
+    align-items: flex-start;
+    gap: 14px;
   }
 
-  .primary-button, .secondary-button {
-    min-height: 43px;
-    padding: 10px 18px;
-    border: 1px solid var(--a-primary);
-    border-radius: 10px;
-    background: var(--a-primary);
-    color: #fff;
-    font: inherit;
-    font-size: .88rem;
-    font-weight: 650;
-    cursor: pointer;
-    transition: background 180ms ease, transform 180ms ease;
+  .no-results[hidden] {
+    display: none;
   }
 
-  .primary-button:hover, .secondary-button:hover {
-    background: var(--a-primary-hover);
-    transform: translateY(-1px);
+  .no-results p {
+    margin: 0;
   }
 
   .load-more-wrap {
     display: flex;
-    justify-content: center;
-    margin-top: 28px;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 36px;
+    padding-top: 24px;
+    border-top: 1px solid var(--color-border, #e9e7ef);
   }
 
-  .load-more-wrap[hidden] { display: none; }
-
-  .secondary-button {
-    border-color: var(--a-border);
-    background: var(--a-white);
-    color: var(--a-primary);
+  .load-more-wrap[hidden] {
+    display: none;
   }
 
-  .secondary-button:hover { border-color: var(--a-primary); color: #fff; }
+  .pagination-link {
+    padding: 8px 16px;
+    border: 1px solid var(--color-border, #e9e7ef);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--color-primary, #7654d6);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: .9rem;
+    cursor: pointer;
+    transition: all 180ms ease;
+  }
+
+  .pagination-link:hover {
+    background: var(--color-primary, #7654d6);
+    color: #fff;
+    border-color: var(--color-primary, #7654d6);
+  }
 
   @media (max-width: 760px) {
-    .author-container { width: calc(100% - 32px); }
-    .profile-hero { padding: 30px 20px; border-radius: 18px; }
-    .profile-avatar-shell { width: 128px; height: 128px; }
-    .profile-stat { margin-top: 23px; }
-    .section-heading { align-items: flex-start; flex-direction: column; gap: 12px; }
-    .tool-row { align-items: flex-start; flex-direction: column; }
-    .sort-control { width: 100%; justify-content: space-between; }
-    .sort-control select { flex: 1; max-width: 220px; }
-    .article-card {
-      grid-template-columns: minmax(0, 1fr) 38px;
-      gap: 12px 14px;
-      padding: 19px;
+    .articles-container {
+      width: calc(100% - 32px);
     }
-    .card-meta {
+    .author-header {
+      flex-direction: column;
+      gap: 20px;
+    }
+    .article-row {
+      grid-template-columns: minmax(0, 1fr) 36px;
+    }
+    .row-date {
       grid-column: 1 / -1;
       flex-direction: row;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 7px;
+      gap: 12px;
     }
-    .meta-dot { display: inline; }
-    .card-category { margin: 0 0 0 5px; }
-    .card-arrow { width: 36px; height: 36px; }
-    .card-copy h3 { font-size: 1.08rem; }
-    .card-copy p { font-size: .86rem; }
-    #search-kbd { display: none; }
-  }
-
-  @media (max-width: 420px) {
-    .profile-socials { gap: 7px; }
-    .profile-socials a { padding: 8px 11px; }
-    .article-card { padding: 16px; }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .author-page *, .author-page *::before, .author-page *::after {
-      scroll-behavior: auto !important;
-      transition-duration: .01ms !important;
-      animation-duration: .01ms !important;
-      animation-iteration-count: 1 !important;
+    .search-kbd {
+      display: none;
+    }
+    .sort-wrap {
+      margin-left: 0;
+    }
+    .dropdown-menu {
+      right: auto;
+      left: 0;
     }
   }
 </style>
