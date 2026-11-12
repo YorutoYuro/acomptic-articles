@@ -1,31 +1,46 @@
+
 ---
-// src/pages/[category]/[...slug].astro
 import { getCollection, render } from 'astro:content';
 import Layout from '../../layouts/Layout.astro';
 
 const mainSiteURL = "https://acomptic.com";
 
+const articlesSiteURL =
+  Astro.site ?? new URL("https://articles.acomptic.com");
+
 export async function getStaticPaths() {
   const articles = await getCollection('articles');
-  
+
   return articles.map((article) => {
     const normalizedId = article.id.replace(/\\/g, '/');
     const parts = normalizedId.split('/');
-    
+
     const category = parts.length > 1 ? parts[0] : 'general';
-    const rawSlug = parts.length > 1 ? parts.slice(1).join('/') : parts[0];
+
+    const rawSlug =
+      parts.length > 1
+        ? parts.slice(1).join('/')
+        : parts[0];
+
     const slug = rawSlug.replace(/\.mdx?$/, '');
 
     return {
-      params: { category, slug },
-      props: { article },
+      params: {
+        category,
+        slug,
+      },
+      props: {
+        article,
+      },
     };
   });
 }
 
 const { article } = Astro.props;
+
 const { Content } = await render(article);
 
+// Format publication dates for readers.
 const formatDate = (date: string) =>
   new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
     day: "numeric",
@@ -35,57 +50,164 @@ const formatDate = (date: string) =>
 
 const readTime = article.data.readTime || 4;
 
-// Custom Author metadata from Frontmatter
+// Author information.
 const authorName = article.data.author || "Acomptic Team";
-const authorHandle = article.data.authorHandle || null; // e.g., "@johndoe"
-const authorUrl = article.data.authorUrl || (authorHandle ? `https://x.com/${authorHandle.replace('@', '')}` : null);
 
-// Structured data schema for SEO
+const authorHandle = article.data.authorHandle || null;
+
+const authorUrl =
+  article.data.authorUrl ||
+  (
+    authorHandle
+      ? `https://x.com/${authorHandle.replace('@', '')}`
+      : null
+  );
+
+// Canonical article URL.
+const articleUrl = new URL(
+  Astro.url.pathname,
+  articlesSiteURL
+);
+
+articleUrl.search = "";
+articleUrl.hash = "";
+
+if (!articleUrl.pathname.endsWith("/")) {
+  articleUrl.pathname += "/";
+}
+
+// Article social image.
+const articleImage = new URL(
+  article.data.ogImage || "/og-image.png",
+  articlesSiteURL
+).href;
+
+// Structured data.
 const schema = [
   {
     "@context": "https://schema.org",
     "@type": "BlogPosting",
-    "headline": article.data.title,
-    "description": article.data.description || article.data.excerpt,
-    "datePublished": article.data.date,
-    "author": {
-      "@type": "Person",
-      "name": authorName,
-      "url": authorUrl
+
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": articleUrl.href
     },
-    "publisher": { "@id": `${mainSiteURL}/#organization` }
+
+    "url": articleUrl.href,
+
+    "headline": article.data.title,
+
+    "description":
+      article.data.description || article.data.excerpt || article.data.title,
+
+    "image": [articleImage],
+
+    "datePublished": article.data.date,
+
+    ...(article.data.updatedDate
+      ? {
+          "dateModified": article.data.updatedDate
+        }
+      : {}),
+
+    "author": {
+      "@type":
+        authorName === "Acomptic Team"
+          ? "Organization"
+          : "Person",
+
+      "name": authorName,
+
+      ...(authorUrl
+        ? {
+            "url": authorUrl
+          }
+        : {})
+    },
+
+    "publisher": {
+      "@type": "Organization",
+      "@id": `${mainSiteURL}/#organization`,
+      "name": "Acomptic",
+      "url": mainSiteURL
+    },
+
+    "inLanguage": "en-IN"
   }
 ];
 ---
 
 <Layout
-  title={`${article.data.title} - Acomptic Articles`}
-  description={article.data.description || article.data.excerpt}
+  title={`${article.data.title} | Acomptic Articles`}
+  description={
+    article.data.description ||
+    article.data.excerpt ||
+    article.data.title
+  }
+  canonicalURL={articleUrl.href}
   schema={schema}
+  author={authorName}
+  ogType="article"
+  ogImage={article.data.ogImage || "/og-image.png"}
+  ogImageAlt={
+    article.data.ogImageAlt || article.data.title
+  }
+  publishedTime={article.data.date}
+  modifiedTime={article.data.updatedDate}
 >
-  <main class="article-page">
+  <div class="article-page">
     <article class="articles-container">
-      
+
       <!-- Article Header -->
       <header class="article-header">
-        <h1 class="article-title">{article.data.title}</h1>
+        <h1 class="article-title">
+          {article.data.title}
+        </h1>
+
         {article.data.description && (
-          <p class="article-excerpt">{article.data.description}</p>
+          <p class="article-excerpt">
+            {article.data.description}
+          </p>
         )}
-        
+
         <div class="article-meta-bar">
           <div class="meta-author">
             <span class="author-label">By</span>
-            <span class="author-name">{authorName}</span>
+
+            <span class="author-name">
+              {authorName}
+            </span>
+
             {authorHandle && authorUrl && (
-              <a href={authorUrl} target="_blank" rel="noopener noreferrer" class="author-handle-link">
+              <a
+                href={authorUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="author-handle-link"
+              >
                 ({authorHandle})
               </a>
             )}
           </div>
+
           <span class="meta-divider" aria-hidden="true">·</span>
-          <time datetime={article.data.date}>{formatDate(article.data.date)}</time>
+
+          <time datetime={article.data.date}>
+            {formatDate(article.data.date)}
+          </time>
+
+          {article.data.updatedDate && (
+            <>
+              <span class="meta-divider" aria-hidden="true">·</span>
+
+              <span>
+                Updated {formatDate(article.data.updatedDate)}
+              </span>
+            </>
+          )}
+
           <span class="meta-divider" aria-hidden="true">·</span>
+
           <span>{readTime} min read</span>
         </div>
       </header>
@@ -95,25 +217,94 @@ const schema = [
         <Content />
       </div>
 
-      <!-- Bottom Call To Action (Matching Index CTA) -->
+      <!-- Bottom Call To Action -->
       <footer class="article-footer-cta">
         <div class="cta-card">
           <div>
-            <h2>Accounting made <span>simple.</span></h2>
+            <h2>
+              Accounting made <span>simple.</span>
+            </h2>
+
             <p>
               Try Acomptic, the offline GST accounting software built for
               small businesses in India.
             </p>
           </div>
-          <a class="articles-btn" href="https://acomptic.com/">
+
+          <a
+            class="articles-btn"
+            href="https://acomptic.com/"
+          >
             Try Acomptic
           </a>
         </div>
       </footer>
 
     </article>
-  </main>
+  </div>
 </Layout>
+
+<!--
+  External links open in a new tab.
+  Internal Acomptic links stay in the same tab.
+-->
+<script>
+  function configureArticleLinks() {
+    const article = document.querySelector(".article-content-body");
+
+    if (!article) return;
+
+    article.querySelectorAll("a[href]").forEach((link) => {
+      try {
+        const url = new URL(link.href, window.location.origin);
+
+        // Leave non-web links unchanged.
+        if (!["http:", "https:"].includes(url.protocol)) {
+          return;
+        }
+
+        const hostname = url.hostname.toLowerCase();
+
+        // Treat the main domain and its subdomains as internal.
+        const isInternal =
+          hostname === "acomptic.com" ||
+          hostname.endsWith(".acomptic.com");
+
+        if (isInternal) {
+          link.removeAttribute("target");
+        } else {
+          link.setAttribute("target", "_blank");
+
+          const existingRel = (
+            link.getAttribute("rel") || ""
+          ).split(/\s+/).filter(Boolean);
+
+          const relValues = new Set([
+            ...existingRel,
+            "noopener",
+            "noreferrer"
+          ]);
+
+          link.setAttribute(
+            "rel",
+            [...relValues].join(" ")
+          );
+        }
+      } catch {
+        // Leave unsupported URLs unchanged.
+      }
+    });
+  }
+
+  // Configure links on initial page load.
+  configureArticleLinks();
+
+  // Support Astro view transitions if enabled.
+  document.addEventListener(
+    "astro:page-load",
+    configureArticleLinks
+  );
+</script>
 
 <style>
   .article-page {
@@ -131,7 +322,6 @@ const schema = [
     box-sizing: border-box;
   }
 
-  /* Matching container width & margins directly from index.astro */
   .articles-container {
     width: min(1120px, calc(100% - 48px));
     margin-inline: auto;
@@ -195,7 +385,7 @@ const schema = [
     text-decoration: underline;
   }
 
-  /* Full-width content body typography */
+  /* Article typography */
   .article-content-body {
     font-size: 1.1rem;
     color: var(--color-ink, #121212);
@@ -226,7 +416,7 @@ const schema = [
     color: var(--color-purple-muted, #625d6b);
   }
 
-  .article-content-body :global(ul), 
+  .article-content-body :global(ul),
   .article-content-body :global(ol) {
     margin-top: 0;
     margin-bottom: 1.6em;
@@ -251,7 +441,7 @@ const schema = [
     border-radius: 0 12px 12px 0;
   }
 
-  /* Bottom CTA matching index page layout */
+  /* Article footer CTA */
   .article-footer-cta {
     margin-top: 80px;
   }
@@ -304,14 +494,22 @@ const schema = [
     font-weight: 650;
     text-decoration: none;
     white-space: nowrap;
-    transition: background-color 180ms ease, border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    transition:
+      background-color 180ms ease,
+      border-color 180ms ease,
+      box-shadow 180ms ease,
+      transform 180ms ease;
   }
 
   .articles-btn:hover,
   .articles-btn:focus-visible {
     border-color: var(--color-primary-hover, #5f3fc0);
     background: var(--color-primary-hover, #5f3fc0);
-    box-shadow: 0 5px 14px color-mix(in srgb, var(--color-primary, #7654d6) 22%, transparent);
+    box-shadow: 0 5px 14px color-mix(
+      in srgb,
+      var(--color-primary, #7654d6) 22%,
+      transparent
+    );
     outline: none;
     transform: translateY(-1px);
   }
@@ -320,6 +518,7 @@ const schema = [
     .articles-container {
       width: calc(100% - 32px);
     }
+
     .article-page {
       padding: 38px 0 64px;
     }
