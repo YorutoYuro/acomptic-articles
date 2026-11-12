@@ -1,17 +1,39 @@
-// src/content.config.ts
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
 
 const articles = defineCollection({
-  loader: glob({ pattern: '**/*.md', base: "./src/content/articles" }),
+  loader: glob({
+    pattern: '**/*.{md,mdx}',
+    base: './src/content/articles',
+  }),
+
   schema: z.object({
-    title: z.string(),
-    date: z.string(),
+    // Article title and publication information
+    title: z.string().min(1, 'Article title is required'),
+
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
+      message: 'Date must use YYYY-MM-DD format',
+    }),
+
+    updatedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, {
+      message: 'Updated date must use YYYY-MM-DD format',
+    }).optional(),
+
+    // Search and social descriptions
     description: z.string().optional(),
-    readTime: z.number().optional(),
-    author: z.string().optional(),        // <-- Added this
-    authorHandle: z.string().optional(),  // <-- Added this
-    authorUrl: z.string().optional(),     // <-- Added this
+    excerpt: z.string().optional(),
+
+    // Reading information
+    readTime: z.number().int().positive().optional(),
+
+    // Author information
+    author: z.string().optional(),
+    authorHandle: z.string().optional(),
+    authorUrl: z.string().url().optional(),
+
+    // Social sharing image
+    ogImage: z.string().optional(),
+    ogImageAlt: z.string().optional(),
   }),
 });
 
