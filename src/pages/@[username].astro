@@ -11,7 +11,7 @@ export async function getStaticPaths() {
     const cleanUsername = username.trim().toLowerCase();
 
     const authorArticles = allArticlesIndex.filter(
-      (art) => art.authorHandle === cleanUsername || art.authorHandle === @${cleanUsername}
+      (art) => art.authorHandle === cleanUsername || art.authorHandle === `@${cleanUsername}`
     );
 
     paths.push({
@@ -52,14 +52,14 @@ const sortOptions = [
 ];
 
 const formatDate = (date: string) =>
-  new Date(${date}T00:00:00).toLocaleDateString("en-IN", {
+  new Date(`${date}T00:00:00`).toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
 ---
 
-<Layout title={${profile.name} (@${username}) - Acomptic}>
+<Layout title={`${profile.name} (@${username}) - Acomptic`}>
   <main class="author-profile-page">
     <div class="articles-container">
 
@@ -141,10 +141,10 @@ const formatDate = (date: string) =>
               <input
                 id="author-search-input"
                 type="search"
-                placeholder={Search ${profile.name}'s articles…}
+                placeholder={`Search ${profile.name}'s articles…`}
                 autocomplete="off"
                 spellcheck="false"
-                aria-label={Search articles by ${profile.name}}
+                aria-label={`Search articles by ${profile.name}`}
               />
               <kbd class="search-kbd" id="search-kbd" aria-hidden="true">/</kbd>
               <button type="button" id="search-clear" class="search-clear" aria-label="Clear search" hidden>
@@ -460,7 +460,7 @@ const formatDate = (date: string) =>
       if (activeCat !== "all") p.set("cat", activeCat);
       if (userSorted) p.set("sort", sortValue);
       const qs = p.toString();
-      history.replaceState(null, "", location.pathname + (qs ? ?${qs} : ""));
+      history.replaceState(null, "", location.pathname + (qs ? `?${qs}` : ""));
     }
 
     function sortResults(items: { r: Rec; score: number }[], mode: string) {
@@ -603,7 +603,7 @@ const formatDate = (date: string) =>
 
       // highlight regex
       const hlTerms = [...q.phrases, ...q.terms].filter(Boolean).sort((a, b) => b.length - a.length);
-      const re = hlTerms.length ? new RegExp((${hlTerms.map(escapeRe).join("|")}), "gi") : null;
+      const re = hlTerms.length ? new RegExp(`(${hlTerms.map(escapeRe).join("|")})`, "gi") : null;
 
       const matchedSet = new Set(matched.map((m) => m.r));
       const frag = document.createDocumentFragment();
@@ -633,10 +633,10 @@ const formatDate = (date: string) =>
           statusEl.textContent = "";
         } else if (filtered) {
           statusEl.textContent =
-            ${total} ${total === 1 ? "article" : "articles"} found +
-            (total > visible ?  · showing ${visible} : "");
+            `${total} ${total === 1 ? "article" : "articles"} found` +
+            (total > visible ? ` · showing ${visible}` : "");
         } else {
-          statusEl.textContent = Showing ${visible} of ${total} articles;
+          statusEl.textContent = `Showing ${visible} of ${total} articles`;
         }
       }
 
@@ -646,7 +646,7 @@ const formatDate = (date: string) =>
       if (loadMoreWrap && loadMoreBtn) {
         const remaining = total - visible;
         loadMoreWrap.hidden = remaining <= 0;
-        loadMoreBtn.textContent = Load more (${remaining} remaining);
+        loadMoreBtn.textContent = `Load more (${remaining} remaining)`;
       }
 
       if (clearBtn) clearBtn.hidden = !query;
