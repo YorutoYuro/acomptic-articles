@@ -83,7 +83,15 @@ const formatDate = (date: string) =>
     year: "numeric",
   });
 
-const articleSchema = sortedArticles.map((article, index) => ({
+const pageTitle = "GST & Income Tax Articles for Indian Businesses | Acomptic";
+const pageDescription =
+  "Practical guides on GST returns, input tax credit, income tax and running a small business in India, from the team behind Acomptic accounting software.";
+
+// Keep the structured data light: the latest 50 articles are enough for search engines.
+const schemaArticles = sortedArticles.slice(0, 50);
+const latestDate = sortedArticles[0]?.date;
+
+const articleSchema = schemaArticles.map((article, index) => ({
   "@type": "ListItem",
   position: index + 1,
   url: `${siteURL}${article.url}`,
@@ -93,22 +101,49 @@ const articleSchema = sortedArticles.map((article, index) => ({
 const schema = [
   {
     "@context": "https://schema.org",
+    "@type": "Organization",
+    "@id": `${mainSiteURL}/#organization`,
+    name: "Acomptic",
+    url: `${mainSiteURL}/`,
+    logo: `${mainSiteURL}/logo.svg`,
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${siteURL}/#website`,
+    name: "Acomptic Articles",
+    url: `${siteURL}/`,
+    inLanguage: "en-IN",
+    publisher: { "@id": `${mainSiteURL}/#organization` },
+  },
+  {
+    "@context": "https://schema.org",
     "@type": "CollectionPage",
     "@id": `${siteURL}/#webpage`,
     url: `${siteURL}/`,
-    name: "Articles - Acomptic",
-    description:
-      "Practical articles on GST, income tax and business insights for small businesses in India.",
+    name: pageTitle,
+    description: pageDescription,
     inLanguage: "en-IN",
+    isPartOf: { "@id": `${siteURL}/#website` },
+    breadcrumb: { "@id": `${siteURL}/#breadcrumb` },
     publisher: { "@id": `${mainSiteURL}/#organization` },
+    about: [
+      { "@type": "Thing", name: "GST" },
+      { "@type": "Thing", name: "Income tax" },
+      { "@type": "Thing", name: "Small business accounting" },
+    ],
+    ...(latestDate ? { dateModified: latestDate } : {}),
     mainEntity: {
       "@type": "ItemList",
+      numberOfItems: sortedArticles.length,
+      itemListOrder: "https://schema.org/ItemListOrderDescending",
       itemListElement: articleSchema,
     },
   },
   {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
+    "@id": `${siteURL}/#breadcrumb`,
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Home", item: `${mainSiteURL}/` },
       { "@type": "ListItem", position: 2, name: "Articles", item: `${siteURL}/` },
@@ -118,11 +153,14 @@ const schema = [
 ---
 
 <Layout
-  title="Articles - Acomptic"
-  description="Practical articles on GST, income tax and running a small business in India, from the team behind Acomptic."
+  title={pageTitle}
+  description={pageDescription}
   schema={schema}
 >
   <main class="articles-page">
+    <h1 class="sr-only">
+      Acomptic Articles: GST, Income Tax and Business Insights for Small Businesses in India
+    </h1>
 
     <!-- HERO / LATEST INSIGHTS CAROUSEL -->
     <section class="articles-hero" aria-label="Latest insights">
@@ -191,8 +229,20 @@ const schema = [
         {categorySections.map((sec) => (
           <section class="topic-section" aria-labelledby={`${sec.key}-title`}>
             <div class="topic-heading">
-              <h3 id={`${sec.key}-title`}>{sec.name}</h3>
-              <p>{sec.description}</p>
+              <div class="topic-heading-copy">
+                <h3 id={`${sec.key}-title`}>{sec.name}</h3>
+                <p>{sec.description}</p>
+              </div>
+              <a
+                class="topic-link"
+                href={`/${sec.key}/`}
+                aria-label={`View all ${sec.name} articles`}
+              >
+                <span>View all</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M5 12h14M12 5l7 7-7 7" />
+                </svg>
+              </a>
             </div>
 
             {sec.articles.length > 0 ? (
@@ -200,7 +250,7 @@ const schema = [
                 {sec.articles.map((art) => (
                   <a class="article-row" href={art.url}>
                     <div class="row-date">
-                      <span>{formatDate(art.date)}</span>
+                      <time datetime={art.date}>{formatDate(art.date)}</time>
                       <span>{art.readTime} min read</span>
                       <span class="row-author">By {art.author}</span>
                     </div>
@@ -208,7 +258,7 @@ const schema = [
                       <h4>{art.title}</h4>
                       <p>{art.excerpt}</p>
                     </div>
-                    <span class="row-action" aria-label="Read article">
+                    <span class="row-action" aria-hidden="true">
                       <svg viewBox="0 0 24 24" aria-hidden="true">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
@@ -387,6 +437,19 @@ const schema = [
   .articles-page *,
   .articles-page *::before,
   .articles-page *::after { box-sizing: border-box; }
+
+  /* Visually hidden, still read by search engines and screen readers */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 
   .articles-page svg {
     display: block;
@@ -687,7 +750,39 @@ const schema = [
     border-top: 1px solid var(--a-border);
   }
 
-  .topic-heading { margin-bottom: 19px; }
+  .topic-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px 24px;
+    margin-bottom: 19px;
+  }
+
+  .topic-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+    color: var(--a-primary);
+    font-size: .92rem;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .topic-link svg {
+    width: 17px;
+    height: 17px;
+    transition: transform 220ms ease;
+  }
+
+  .topic-link:hover svg,
+  .topic-link:focus-visible svg { transform: translateX(3px); }
+
+  .topic-link:focus-visible {
+    outline: 2px solid var(--a-primary);
+    outline-offset: 4px;
+  }
 
   .topic-heading h3 {
     margin: 0;
@@ -930,6 +1025,9 @@ const schema = [
     .topic-section { padding: 26px 0 28px; }
 
     .topic-heading {
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
       margin-bottom: 18px;
       text-align: center;
     }
@@ -1005,6 +1103,7 @@ const schema = [
     .latest-feature,
     .card-button,
     .card-button svg,
+    .topic-link svg,
     .article-row,
     .row-copy h4,
     .row-action,
