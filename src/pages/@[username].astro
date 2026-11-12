@@ -1138,12 +1138,14 @@ const schema = [
 
   /* verified badge */
   .verified-badge {
-    display: inline-flex;
-    flex: 0 0 auto;
-    width: clamp(24px, 3vw, 32px);
-    height: clamp(24px, 3vw, 32px);
-    cursor: default;
-  }
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: clamp(24px, 3vw, 32px);
+  height: clamp(24px, 3vw, 32px);
+  position: relative;
+  top: 3px;
+  cursor: default;
+}
 
   .verified-badge svg {
     width: 100%;
