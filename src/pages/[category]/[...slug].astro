@@ -72,10 +72,6 @@ const articleUrl = new URL(
 articleUrl.search = "";
 articleUrl.hash = "";
 
-if (!articleUrl.pathname.endsWith("/")) {
-  articleUrl.pathname += "/";
-}
-
 // Article social image.
 const articleImage = new URL(
   article.data.ogImage || "/og-image.png",
