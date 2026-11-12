@@ -3,6 +3,30 @@ import Layout from "../../layouts/Layout.astro";
 import { getArticlesIndex } from "../../utils/getArticlesIndex";
 
 export async function getStaticPaths() {
+  // NOTE: getStaticPaths runs on its own, so the helpers live inside it.
+  const categoryNames: Record<string, string> = {
+    insights: "Insights",
+    gst: "GST",
+    "income-tax": "Income Tax",
+  };
+
+  const categoryDescriptions: Record<string, string> = {
+    insights: "Ideas and practical guidance for running a clearer, more efficient business.",
+    gst: "Straightforward guidance on GST returns, input tax credit and compliance.",
+    "income-tax": "Understand tax basics, filing requirements and planning for your business.",
+  };
+
+  // "income-tax" -> "Income Tax", "tds" -> "TDS"
+  const getCategoryName = (slug: string) => {
+    if (categoryNames[slug]) return categoryNames[slug];
+    if (slug.replace(/-/g, "").length <= 3) return slug.replace(/-/g, " ").toUpperCase();
+    return slug
+      .split("-")
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
   const allArticlesIndex = await getArticlesIndex();
   const categoriesMap = new Map<string, typeof allArticlesIndex>();
 
@@ -16,6 +40,13 @@ export async function getStaticPaths() {
     categoriesMap.get(rawCategory)!.push(art);
   }
 
+  // Every topic with its article count, used for the "other topics" links.
+  const allCategories = Array.from(categoriesMap.entries()).map(([slug, items]) => ({
+    slug,
+    name: getCategoryName(slug),
+    count: items.length,
+  }));
+
   const paths = [];
   for (const [category, articles] of categoriesMap.entries()) {
     paths.push({
@@ -23,10 +54,14 @@ export async function getStaticPaths() {
         category,
       },
       props: {
-        categoryName: category.charAt(0).toUpperCase() + category.slice(1),
+        categoryName: getCategoryName(category),
+        categoryDescription:
+          categoryDescriptions[category] ||
+          `Latest articles and guides for ${getCategoryName(category)}.`,
         categorySlug: category,
         articles,
         totalArticles: articles.length,
+        allCategories,
       },
     });
   }
@@ -35,14 +70,24 @@ export async function getStaticPaths() {
 }
 
 const PAGE_SIZE = 10;
-const { categoryName, categorySlug, articles, totalArticles } = Astro.props;
+const {
+  categoryName,
+  categoryDescription,
+  categorySlug,
+  articles,
+  totalArticles,
+  allCategories,
+} = Astro.props;
 
-// Other sibling categories with counts for filter chips / navigation
-const categoryMap = new Map<string, number>();
-for (const art of articles) {
-  const key = String(art.category || "").toLowerCase();
-  if (key) categoryMap.set(key, (categoryMap.get(key) || 0) + 1);
-}
+const mainSiteURL = "https://acomptic.com";
+const siteOrigin = (Astro.site ?? new URL("https://articles.acomptic.com")).origin;
+
+// Canonical URL: always the clean category address, never ?q= or ?sort=
+const pageUrl = new URL(Astro.url.pathname, siteOrigin);
+pageUrl.search = "";
+pageUrl.hash = "";
+
+const otherCategories = allCategories.filter((cat) => cat.slug !== categorySlug);
 
 const sortOptions = [
   { value: "relevance", label: "Best match" },
@@ -58,25 +103,90 @@ const formatDate = (date: string) =>
     month: "short",
     year: "numeric",
   });
+
+// SEO text
+const pageTitle = `${categoryName} Articles for Indian Businesses | Acomptic`;
+const pageDescription = `${categoryDescription} Browse all ${totalArticles} ${categoryName} ${
+  totalArticles === 1 ? "article" : "articles"
+} from the Acomptic team.`;
+
+const newestFirst = [...articles].sort(
+  (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
+);
+const latestDate = newestFirst[0]?.date;
+
+// Keep the structured data light: the latest 50 articles are enough.
+const itemListSchema = newestFirst.slice(0, 50).map((art, index) => ({
+  "@type": "ListItem",
+  position: index + 1,
+  url: new URL(art.url, siteOrigin).href,
+  name: art.title,
+}));
+
+const schema = [
+  {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": `${pageUrl.href}#webpage`,
+    url: pageUrl.href,
+    name: `${categoryName} Articles`,
+    description: pageDescription,
+    inLanguage: "en-IN",
+    isPartOf: { "@id": `${siteOrigin}/#website` },
+    breadcrumb: { "@id": `${pageUrl.href}#breadcrumb` },
+    publisher: { "@id": `${mainSiteURL}/#organization` },
+    about: { "@type": "Thing", name: categoryName },
+    ...(latestDate ? { dateModified: latestDate } : {}),
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: totalArticles,
+      itemListOrder: "https://schema.org/ItemListOrderDescending",
+      itemListElement: itemListSchema,
+    },
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "@id": `${pageUrl.href}#breadcrumb`,
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: `${mainSiteURL}/` },
+      { "@type": "ListItem", position: 2, name: "Articles", item: `${siteOrigin}/` },
+      { "@type": "ListItem", position: 3, name: categoryName, item: pageUrl.href },
+    ],
+  },
+];
 ---
 
-<Layout title={`${categoryName} Articles - Acomptic`}>
+<Layout
+  title={pageTitle}
+  description={pageDescription}
+  canonicalURL={pageUrl.href}
+  ogImage="/og-image.png"
+  ogImageAlt={`${categoryName} articles from Acomptic`}
+  schema={schema}
+>
   <main class="category-page">
     <div class="articles-container">
 
+      <!-- BREADCRUMB -->
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ol>
+          <li><a href="/">Articles</a></li>
+          <li aria-current="page"><span>{categoryName}</span></li>
+        </ol>
+      </nav>
+
       <!-- CATEGORY HEADER -->
       <header class="category-header">
-        <div class="category-title-block">
-          <h1>{categoryName}</h1>
-          <p class="category-desc">
-            Explore all official articles, guides, and insights filed under {categoryName}.
-          </p>
-        </div>
+        <h1>{categoryName}{" "}<span>Articles</span></h1>
+        <p class="category-desc">{categoryDescription}</p>
       </header>
 
-      <section class="category-articles-section">
+      <section class="category-articles-section" aria-labelledby="category-articles-title">
         <div class="section-title">
-          <h2>Articles in {categoryName} <span>({totalArticles})</span></h2>
+          <h2 id="category-articles-title">
+            Articles in {categoryName} <span>({totalArticles})</span>
+          </h2>
         </div>
 
         {totalArticles > 0 && (
@@ -155,15 +265,15 @@ const formatDate = (date: string) =>
                 data-read={art.readTime}
               >
                 <div class="row-date">
-                  <span>{formatDate(art.date)}</span>
+                  <time datetime={art.date}>{formatDate(art.date)}</time>
                   <span>{art.readTime} min read</span>
                   <span class="row-author">By @{art.authorHandle || "acomptic"}</span>
                 </div>
                 <div class="row-copy">
-                  <h4>{art.title}</h4>
+                  <h3>{art.title}</h3>
                   <p>{art.excerpt}</p>
                 </div>
-                <span class="row-action" aria-label="Read article">
+                <span class="row-action" aria-hidden="true">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M5 12h14M12 5l7 7-7 7" />
                   </svg>
@@ -179,14 +289,50 @@ const formatDate = (date: string) =>
 
         <div class="empty-state no-results" id="no-results" hidden>
           <p>No articles match your search.</p>
-          <button type="button" id="no-results-clear" class="pagination-link">Clear search</button>
+          <button type="button" id="no-results-clear" class="pill-button">Clear search</button>
         </div>
 
         {totalArticles > PAGE_SIZE && (
           <div class="load-more-wrap" id="load-more-wrap">
-            <button type="button" id="load-more" class="pagination-link">Load more</button>
+            <button type="button" id="load-more" class="pill-button">Load more</button>
           </div>
         )}
+      </section>
+
+      <!-- OTHER TOPICS (internal links) -->
+      {otherCategories.length > 0 && (
+        <section class="more-topics" aria-labelledby="more-topics-title">
+          <h2 class="more-topics-title" id="more-topics-title">Explore other topics</h2>
+          <div class="topic-chips">
+            {otherCategories.map((cat) => (
+              <a class="pill-button" href={`/${cat.slug}/`}>
+                <span>{cat.name}</span>
+                <span class="chip-count">({cat.count})</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <!-- ACOMPTIC CTA CARD -->
+      <section class="category-cta" aria-labelledby="category-cta-title">
+        <div class="cta-card">
+          <div class="cta-copy">
+            <p class="cta-title" id="category-cta-title">
+              Accounting made <span>simple.</span>
+            </p>
+            <p class="cta-text">
+              Try Acomptic, the offline GST accounting software built for
+              small businesses in India.
+            </p>
+          </div>
+          <a class="pill-button" href="https://acomptic.com/">
+            <span>Try Acomptic</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </a>
+        </div>
       </section>
 
     </div>
@@ -249,7 +395,7 @@ const formatDate = (date: string) =>
 
     // ---------- index built from rendered rows ----------
     const records = Array.from(list.querySelectorAll<HTMLElement>(".article-row")).map((el, i) => {
-      const titleEl = el.querySelector("h4") as HTMLElement;
+      const titleEl = el.querySelector("h3") as HTMLElement;
       const excerptEl = el.querySelector(".row-copy p") as HTMLElement;
       const title = titleEl?.textContent ?? "";
       const excerpt = excerptEl?.textContent ?? "";
@@ -481,6 +627,10 @@ const formatDate = (date: string) =>
       } else if (e.key === "Escape") {
         e.preventDefault();
         closeMenu(true);
+      } else if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        const current = document.activeElement as HTMLElement;
+        if (current?.classList.contains("dropdown-option")) chooseOption(current);
       }
     });
 
@@ -594,59 +744,215 @@ const formatDate = (date: string) =>
       render();
     });
 
+    // Press "/" to jump to the search box
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)) return;
+      e.preventDefault();
+      input?.focus();
+    });
+
     render();
   }
 </script>
 
 <style>
+  /* ======================================================
+     THEME + GOLDEN-RATIO TYPOGRAPHY (same system as the
+     main site and the other articles pages)
+     ====================================================== */
+
   .category-page {
-    background: var(--color-white, #fff);
-    color: var(--color-ink, #121212);
-    padding: 56px 0 88px;
+    --a-primary: var(--color-primary, #7654d6);
+    --a-primary-hover: var(--color-primary-hover, #5f3fc0);
+    --a-purple-border: var(--color-lavender-soft, #dbd6ff);
+    --a-muted: var(--color-purple-muted, #625a7a);
+    --a-ink: var(--color-text, #121212);
+    --a-border: var(--color-border, #e9e7ef);
+    --a-white: var(--color-white, #ffffff);
+    --a-soft: var(--color-surface-soft, #faf9fc);
+
+    --type-base: 16px;
+    --type-sm: var(--type-base);
+    --type-md: calc(var(--type-base) * 1.272);
+    --type-2xl: calc(var(--type-base) * 2.618);
+
+    background: var(--a-white);
+    color: var(--a-ink);
+    font-family: var(--font-primary, inherit);
+    font-size: var(--type-sm);
+    line-height: 1.618;
+    padding: clamp(32px, 5vw, 60px) 0 clamp(56px, 7vw, 88px);
+    overflow-wrap: anywhere;
   }
 
-  .articles-container {
-    width: min(1160px, calc(100% - 64px));
+  .category-page *,
+  .category-page *::before,
+  .category-page *::after { box-sizing: border-box; }
+
+  .category-page svg {
+    display: block;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .category-page .articles-container {
+    width: min(100% - 48px, 1200px);
     margin-inline: auto;
   }
 
-  .category-header {
-    padding-bottom: 32px;
-    border-bottom: 1px solid var(--color-border, #e9e7ef);
-    margin-bottom: 40px;
+  /* ======================================================
+     SHARED PILL BUTTON (same as the main site buttons)
+     ====================================================== */
+
+  .pill-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 9px 22px;
+    border: 1px solid rgb(20 20 20 / 12%);
+    border-radius: 999px;
+    background: var(--a-white);
+    color: var(--a-ink);
+    font-family: var(--font-primary, inherit);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.3;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color 220ms ease,
+      border-color 220ms ease,
+      box-shadow 220ms ease,
+      color 220ms ease;
   }
 
-  .category-title-block h1 {
+  .pill-button svg {
+    width: 17px;
+    height: 17px;
+    flex: 0 0 auto;
+    transition: transform 220ms ease;
+  }
+
+  .pill-button:hover,
+  .pill-button:focus-visible {
+    background: var(--a-primary);
+    border-color: var(--a-primary);
+    color: var(--a-white);
+    box-shadow: 0 4px 12px rgb(18 18 18 / 6%);
+  }
+
+  .pill-button:hover svg,
+  .pill-button:focus-visible svg { transform: translateX(3px); }
+
+  .pill-button:focus-visible {
+    outline: 2px solid var(--a-primary);
+    outline-offset: 4px;
+  }
+
+  .chip-count { opacity: .65; }
+
+  /* ======================================================
+     BREADCRUMB + HEADER
+     ====================================================== */
+
+  .breadcrumb ol {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 4px 8px;
+    margin: 0 0 22px;
+    padding: 0;
+    list-style: none;
+    color: var(--a-muted);
+    font-size: .84rem;
+  }
+
+  .breadcrumb li {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .breadcrumb li + li::before {
+    content: "›";
+    margin-right: 8px;
+    opacity: .55;
+  }
+
+  .breadcrumb a {
+    color: var(--a-muted);
+    text-decoration: none;
+    transition: color 180ms ease;
+  }
+
+  .breadcrumb a:hover,
+  .breadcrumb a:focus-visible { color: var(--a-primary); }
+
+  .breadcrumb li[aria-current="page"] span {
+    color: var(--a-ink);
+    font-weight: 600;
+  }
+
+  .category-header {
+    max-width: 700px;
+    margin: 0 auto clamp(32px, 4.5vw, 48px);
+    text-align: center;
+  }
+
+  .category-header h1 {
     margin: 0;
-    font-size: 2.3rem;
-    font-weight: 750;
-    letter-spacing: -.03em;
-    line-height: 1.2;
-    text-transform: capitalize;
+    color: var(--a-ink);
+    font-size: clamp(2.2rem, 5vw, 3.33rem);
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -.045em;
+  }
+
+  .category-header h1 span {
+    display: block;
+    color: var(--a-primary);
   }
 
   .category-desc {
-    margin: 10px 0 0;
-    color: var(--color-purple-muted, #625d6b);
-    font-size: 1.02rem;
+    max-width: 570px;
+    margin: 20px auto 0;
+    color: var(--a-muted);
+    font-size: var(--type-sm);
+    line-height: 1.8;
+  }
+
+  /* ======================================================
+     ARTICLES SECTION + SEARCH
+     ====================================================== */
+
+  .category-articles-section {
+    padding-top: 28px;
+    border-top: 1px solid var(--a-border);
   }
 
   .section-title h2 {
-    margin: 0 0 24px;
-    font-size: 1.5rem;
-    font-weight: 680;
+    margin: 0 0 22px;
+    color: var(--a-ink);
+    font-size: var(--type-md);
+    font-weight: 500;
     letter-spacing: -.03em;
+    line-height: 1.3;
   }
 
   .section-title span {
-    color: var(--color-purple-muted, #625d6b);
-    font-weight: 500;
+    color: var(--a-muted);
+    font-weight: 400;
   }
 
-  /* Search & Controls */
-  .category-search {
-    margin-bottom: 20px;
-  }
+  .category-search { margin-bottom: 20px; }
 
   .search-field {
     position: relative;
@@ -659,19 +965,18 @@ const formatDate = (date: string) =>
     left: 18px;
     width: 18px;
     height: 18px;
-    fill: none;
-    stroke: var(--color-purple-muted, #625d6b);
+    stroke: var(--a-muted);
     stroke-width: 2;
-    stroke-linecap: round;
     pointer-events: none;
   }
 
   #category-search-input {
     width: 100%;
-    padding: 15px 56px 15px 48px;
-    border: 1px solid var(--color-border, #e9e7ef);
-    border-radius: 14px;
-    background: var(--color-white, #fff);
+    min-height: 50px;
+    padding: 13px 56px 13px 48px;
+    border: 1px solid rgb(20 20 20 / 12%);
+    border-radius: 999px;
+    background: var(--a-white);
     color: inherit;
     font: inherit;
     font-size: 1rem;
@@ -680,51 +985,46 @@ const formatDate = (date: string) =>
   }
 
   #category-search-input:focus {
-    border-color: var(--color-primary, #7654d6);
+    border-color: var(--a-primary);
     box-shadow: 0 0 0 4px rgba(118, 84, 214, 0.12);
   }
 
   .search-kbd {
     position: absolute;
-    right: 16px;
+    right: 18px;
     min-width: 24px;
     padding: 2px 7px;
-    border: 1px solid var(--color-border, #e9e7ef);
+    border: 1px solid var(--a-border);
     border-radius: 6px;
-    background: #faf9fd;
-    color: var(--color-purple-muted, #625d6b);
+    background: var(--a-soft);
+    color: var(--a-muted);
     font-size: .78rem;
     font-weight: 600;
+    text-align: center;
   }
 
   .search-kbd[hidden],
-  .search-clear[hidden] {
-    display: none;
-  }
+  .search-clear[hidden] { display: none; }
 
   .search-clear {
     position: absolute;
-    right: 10px;
+    right: 9px;
     display: grid;
     place-items: center;
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     border: 0;
     border-radius: 50%;
     background: transparent;
-    color: var(--color-purple-muted, #625d6b);
+    color: var(--a-muted);
     cursor: pointer;
   }
 
-  .search-clear:hover {
-    background: #f1edfb;
-  }
+  .search-clear:hover { background: #f1edfb; }
 
   .search-clear svg {
     width: 16px;
     height: 16px;
-    fill: none;
-    stroke: currentColor;
     stroke-width: 2;
   }
 
@@ -742,58 +1042,50 @@ const formatDate = (date: string) =>
   }
 
   .sort-label {
-    color: var(--color-purple-muted, #625d6b);
+    color: var(--a-muted);
     font-size: .85rem;
     font-weight: 600;
   }
 
-  .dropdown {
-    position: relative;
-  }
+  .dropdown { position: relative; }
 
   .dropdown-trigger {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    min-width: 150px;
     justify-content: space-between;
-    padding: 8px 14px;
-    border: 1px solid var(--color-border, #e9e7ef);
-    border-radius: 10px;
-    background: var(--color-white, #fff);
-    color: var(--color-ink, #121212);
+    gap: 10px;
+    min-width: 160px;
+    min-height: 40px;
+    padding: 8px 16px;
+    border: 1px solid rgb(20 20 20 / 12%);
+    border-radius: 999px;
+    background: var(--a-white);
+    color: var(--a-ink);
     font: inherit;
-    font-size: .88rem;
+    font-size: .9rem;
     font-weight: 600;
     cursor: pointer;
     outline: none;
     transition: border-color 160ms ease, box-shadow 160ms ease;
   }
 
-  .dropdown-trigger:hover {
-    border-color: var(--color-purple-border, #d9ccff);
-  }
+  .dropdown-trigger:hover { border-color: var(--a-purple-border); }
 
   .dropdown-trigger:focus-visible,
   .dropdown.is-open .dropdown-trigger {
-    border-color: var(--color-primary, #7654d6);
+    border-color: var(--a-primary);
     box-shadow: 0 0 0 4px rgba(118, 84, 214, 0.12);
   }
 
   .chev {
     width: 16px;
     height: 16px;
-    fill: none;
-    stroke: var(--color-primary, #7654d6);
+    stroke: var(--a-primary);
     stroke-width: 2.2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
     transition: transform 180ms ease;
   }
 
-  .dropdown.is-open .chev {
-    transform: rotate(180deg);
-  }
+  .dropdown.is-open .chev { transform: rotate(180deg); }
 
   .dropdown-menu {
     position: absolute;
@@ -805,15 +1097,13 @@ const formatDate = (date: string) =>
     margin: 0;
     padding: 6px;
     list-style: none;
-    border: 1px solid var(--color-border, #e9e7ef);
-    border-radius: 14px;
-    background: var(--color-white, #fff);
+    border: 1px solid var(--a-border);
+    border-radius: 17px;
+    background: var(--a-white);
     box-shadow: 0 16px 40px rgba(36, 25, 72, 0.12);
   }
 
-  .dropdown-menu[hidden] {
-    display: none;
-  }
+  .dropdown-menu[hidden] { display: none; }
 
   .dropdown-option {
     display: flex;
@@ -821,42 +1111,43 @@ const formatDate = (date: string) =>
     justify-content: space-between;
     gap: 18px;
     padding: 9px 12px;
-    border-radius: 9px;
-    color: var(--color-ink, #121212);
-    font-size: .88rem;
+    border-radius: 11px;
+    color: var(--a-ink);
+    font-size: .9rem;
     font-weight: 550;
     cursor: pointer;
+    outline: none;
   }
 
   .dropdown-option:hover,
   .dropdown-option:focus-visible {
     background: rgba(118, 84, 214, 0.08);
-    color: var(--color-primary, #7654d6);
+    color: var(--a-primary);
   }
 
   .dropdown-option.is-selected {
-    color: var(--color-primary, #7654d6);
+    color: var(--a-primary);
     font-weight: 700;
+  }
+
+  .dropdown-option.is-disabled {
+    opacity: .45;
+    cursor: not-allowed;
   }
 
   .dropdown-option .check {
     width: 16px;
     height: 16px;
-    fill: none;
-    stroke: var(--color-primary, #7654d6);
+    stroke: var(--a-primary);
     stroke-width: 2.4;
-    stroke-linecap: round;
-    stroke-linejoin: round;
     opacity: 0;
   }
 
-  .dropdown-option.is-selected .check {
-    opacity: 1;
-  }
+  .dropdown-option.is-selected .check { opacity: 1; }
 
   .search-hint {
     margin: 12px 0 0;
-    color: var(--color-purple-muted, #625d6b);
+    color: var(--a-muted);
     font-size: .8rem;
     opacity: .85;
   }
@@ -864,17 +1155,21 @@ const formatDate = (date: string) =>
   .results-status {
     margin: 0 0 14px;
     min-height: 1.2em;
-    color: var(--color-purple-muted, #625d6b);
+    color: var(--a-muted);
     font-size: .88rem;
     font-weight: 500;
   }
 
   .row-copy :global(mark) {
-    background: rgba(118, 84, 214, 0.16);
-    color: inherit;
     padding: 0 2px;
     border-radius: 3px;
+    background: rgba(118, 84, 214, 0.16);
+    color: inherit;
   }
+
+  /* ======================================================
+     ARTICLE CARDS (same as the articles home page)
+     ====================================================== */
 
   .topic-articles-list {
     display: flex;
@@ -882,56 +1177,68 @@ const formatDate = (date: string) =>
     gap: 12px;
   }
 
-  .topic-articles-list[hidden] {
-    display: none;
-  }
+  .topic-articles-list[hidden] { display: none; }
 
   .article-row {
     display: grid;
-    grid-template-columns: 180px minmax(0, 1fr) 42px;
-    gap: 26px;
+    grid-template-columns: 168px minmax(0, 1fr) 42px;
+    gap: clamp(18px, 2.5vw, 30px);
     align-items: center;
+    min-height: 132px;
     padding: 22px 26px;
-    border: 1px solid var(--color-border, #e9e7ef);
-    border-radius: 15px;
-    background: var(--color-white, #fff);
+    border: 2px solid var(--a-border);
+    border-radius: 17px;
+    background: var(--a-white);
     color: inherit;
     text-decoration: none;
     transition: border-color 200ms ease, box-shadow 200ms ease;
   }
 
-  .article-row[hidden] {
-    display: none;
-  }
+  .article-row[hidden] { display: none; }
 
-  .article-row:hover {
-    border-color: var(--color-purple-border, #d9ccff);
+  .article-row:hover,
+  .article-row:focus-visible {
+    border-color: var(--a-purple-border);
     box-shadow: 0 8px 24px rgba(36, 25, 72, 0.055);
+    outline: none;
   }
 
   .row-date {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    color: var(--color-purple-muted, #625d6b);
+    align-items: flex-start;
+    gap: 5px;
+    color: var(--a-muted);
     font-size: .8rem;
+    line-height: 1.5;
   }
 
   .row-author {
-    color: var(--color-primary, #7654d6);
+    margin-top: 3px;
+    color: var(--a-ink);
     font-weight: 600;
   }
 
-  .row-copy h4 {
+  .row-copy { min-width: 0; }
+
+  .row-copy h3 {
     margin: 0;
-    font-size: 1.2rem;
-    font-weight: 650;
+    color: var(--a-ink);
+    font-size: clamp(1.08rem, 1.65vw, 1.3rem);
+    font-weight: 600;
+    letter-spacing: -.028em;
+    line-height: 1.35;
+    transition: color 200ms ease;
   }
 
+  .article-row:hover .row-copy h3 { color: var(--a-primary); }
+
   .row-copy p {
-    margin: 6px 0 0;
-    color: var(--color-purple-muted, #625d6b);
+    max-width: 760px;
+    margin: 7px 0 0;
+    color: var(--a-muted);
     font-size: .9rem;
+    line-height: 1.6;
   }
 
   .row-action {
@@ -939,85 +1246,214 @@ const formatDate = (date: string) =>
     width: 40px;
     height: 40px;
     place-items: center;
-    border: 1px solid var(--color-border, #e9e7ef);
+    border: 1px solid rgb(20 20 20 / 12%);
     border-radius: 50%;
-    color: var(--color-primary, #7654d6);
+    background: var(--a-white);
+    color: var(--a-ink);
+    transition: border-color 220ms ease, background-color 220ms ease, color 220ms ease;
   }
 
   .row-action svg {
     width: 17px;
     height: 17px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
+    transition: transform 220ms ease;
   }
+
+  .article-row:hover .row-action,
+  .article-row:focus-visible .row-action {
+    border-color: var(--a-primary);
+    background: var(--a-primary);
+    color: var(--a-white);
+  }
+
+  .article-row:hover .row-action svg { transform: translateX(3px); }
 
   .empty-state {
     padding: 36px;
-    border: 1px solid var(--color-border, #e9e7ef);
-    border-radius: 15px;
-    color: var(--color-purple-muted, #625d6b);
+    border: 2px solid var(--a-border);
+    border-radius: 17px;
+    color: var(--a-muted);
+    text-align: center;
   }
 
   .no-results {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: center;
     gap: 14px;
   }
 
-  .no-results[hidden] {
-    display: none;
-  }
+  .no-results[hidden] { display: none; }
 
   .load-more-wrap {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 12px;
-    margin-top: 36px;
-    padding-top: 24px;
-    border-top: 1px solid var(--color-border, #e9e7ef);
+    margin-top: 32px;
   }
 
-  .load-more-wrap[hidden] {
-    display: none;
+  .load-more-wrap[hidden] { display: none; }
+
+  /* ======================================================
+     OTHER TOPICS + CTA
+     ====================================================== */
+
+  .more-topics {
+    margin-top: clamp(48px, 6vw, 72px);
+    padding-top: 28px;
+    border-top: 1px solid var(--a-border);
+    text-align: center;
   }
 
-  .pagination-link {
-    padding: 8px 16px;
-    border: 1px solid var(--color-border, #e9e7ef);
-    border-radius: 8px;
-    background: #fff;
-    color: var(--color-primary, #7654d6);
-    font: inherit;
-    font-weight: 600;
-    text-decoration: none;
-    font-size: .9rem;
-    cursor: pointer;
-    transition: all 180ms ease;
+  .more-topics-title {
+    margin: 0 0 18px;
+    color: var(--a-ink);
+    font-size: var(--type-md);
+    font-weight: 500;
+    letter-spacing: -.03em;
+    line-height: 1.3;
   }
 
-  .pagination-link:hover {
-    background: var(--color-primary, #7654d6);
-    color: #fff;
-    border-color: var(--color-primary, #7654d6);
+  .topic-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
   }
+
+  .category-cta { margin-top: clamp(40px, 5vw, 64px); }
+
+  .cta-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px 40px;
+    padding: clamp(28px, 4vw, 46px);
+    border: 2px solid var(--a-purple-border);
+    border-radius: 17px;
+    background: var(--a-soft);
+  }
+
+  .cta-title {
+    margin: 0;
+    color: var(--a-ink);
+    font-size: clamp(1.75rem, 3vw, 2.5rem);
+    font-weight: 500;
+    letter-spacing: -.045em;
+    line-height: 1.15;
+  }
+
+  .cta-title span { color: var(--a-primary); }
+
+  .cta-text {
+    max-width: 520px;
+    margin: 10px 0 0;
+    color: var(--a-muted);
+    line-height: 1.7;
+  }
+
+  /* ======================================================
+     MOBILE: everything centered
+     ====================================================== */
 
   @media (max-width: 760px) {
-    .articles-container {
-      width: calc(100% - 32px);
+    .category-page .articles-container { width: calc(100% - 36px); }
+
+    .breadcrumb ol { margin-bottom: 18px; }
+
+    .category-header { margin-bottom: 28px; }
+
+    .category-header h1 { font-size: clamp(2.1rem, 9vw, 2.6rem); }
+
+    .category-desc {
+      margin-top: 14px;
+      line-height: 1.75;
     }
+
+    .category-articles-section { padding-top: 24px; }
+
+    .section-title h2 { text-align: center; }
+
+    .search-controls { justify-content: center; }
+
+    .search-hint,
+    .results-status { text-align: center; }
+
+    .search-kbd { display: none; }
+
+    .dropdown-menu {
+      right: auto;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
     .article-row {
-      grid-template-columns: minmax(0, 1fr) 36px;
-    }
-    .row-date {
-      grid-column: 1 / -1;
-      flex-direction: row;
+      grid-template-columns: minmax(0, 1fr);
+      justify-items: center;
       gap: 12px;
+      min-height: 0;
+      padding: 22px 18px;
+      text-align: center;
     }
-    .search-kbd {
-      display: none;
+
+    .row-date {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 4px 10px;
+      font-size: .78rem;
     }
+
+    .row-author { margin-top: 0; }
+
+    .row-copy h3 { font-size: 1.12rem; }
+
+    .row-copy p {
+      margin-inline: auto;
+      font-size: .88rem;
+    }
+
+    .row-action { margin-top: 4px; }
+
+    .more-topics { margin-top: 44px; }
+
+    .cta-card {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 22px;
+      padding: 32px 22px;
+      text-align: center;
+    }
+
+    .cta-text { margin-inline: auto; }
+
+    .cta-card .pill-button {
+      width: 100%;
+      max-width: 320px;
+    }
+  }
+
+  @media (max-width: 430px) {
+    .category-page .articles-container { width: calc(100% - 28px); }
+
+    .sort-wrap { gap: 8px; }
+
+    .dropdown-trigger { min-width: 148px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pill-button,
+    .pill-button svg,
+    .article-row,
+    .row-copy h3,
+    .row-action,
+    .row-action svg,
+    .breadcrumb a,
+    .chev { transition: none !important; }
   }
 </style>
