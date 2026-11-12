@@ -1,6 +1,9 @@
 import { defineConfig } from 'astro/config';
+import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
-  site: 'https://articles.acomptic.com', // Or your GitHub username.github.io if using a repo page
-  output: 'static',
+  site: 'https://articles.acomptic.com',
+  integrations: [
+    sitemap(),
+  ],
 });
