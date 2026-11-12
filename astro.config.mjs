@@ -5,7 +5,7 @@ export default defineConfig({
   site: 'https://articles.acomptic.com',
 
   // Keep article URLs, canonical URLs and sitemap URLs consistent.
-  trailingSlash: 'always',
+  trailingSlash: 'never',
 
   integrations: [
     sitemap(),
