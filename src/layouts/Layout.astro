@@ -54,11 +54,6 @@ const canonical = new URL(
 canonical.search = "";
 canonical.hash = "";
 
-// Enforce trailing slash consistently.
-if (!canonical.pathname.endsWith("/")) {
-  canonical.pathname += "/";
-}
-
 // Resolve social image URL.
 const socialImage = new URL(ogImage, siteURL);
 
