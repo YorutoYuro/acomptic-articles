@@ -43,14 +43,6 @@ const currentPath = Astro.url.pathname;
           </a>
         );
       })}
-
-      <!-- Only visible inside the mobile menu -->
-      <a class="try-button nav-cta" href={accountURL} target="_blank" rel="noopener noreferrer">
-        <span>Try Acomptic</span>
-        <svg class="outbound-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-          <path d="M7 17L17 7M17 7H7M17 7V17" />
-        </svg>
-      </a>
     </nav>
 
     <div class="header-actions">
@@ -62,8 +54,8 @@ const currentPath = Astro.url.pathname;
         <span class="search-label">Search</span>
       </button>
 
-      <a class="try-button try-desktop" href={accountURL} target="_blank" rel="noopener noreferrer">
-        <span>Try Acomptic</span>
+      <a class="try-button" href={accountURL} target="_blank" rel="noopener noreferrer">
+        <span>Try<span class="try-long"> Acomptic</span></span>
         <svg class="outbound-icon" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
           <path d="M7 17L17 7M17 7H7M17 7V17" />
         </svg>
@@ -506,9 +498,6 @@ const currentPath = Astro.url.pathname;
     color: #ffffff;
   }
 
-  /* Hidden on desktop, shown only in the mobile menu */
-  .nav-cta { display: none; }
-
   @media (max-width: 900px) {
     .header-inner {
       grid-template-columns: 1fr auto;
@@ -539,8 +528,13 @@ const currentPath = Astro.url.pathname;
 
     .search-label { display: none; }
 
-    /* CTA moves into the menu */
-    .header-actions .try-desktop { display: none; }
+    /* Compact Try button stays in the header */
+    .try-button {
+      min-height: 40px;
+      padding: 0 16px;
+      font-size: 14px;
+      gap: 5px;
+    }
 
     .menu-toggle { display: grid; }
 
@@ -573,13 +567,6 @@ const currentPath = Astro.url.pathname;
       font-size: 16px;
       border-bottom: 1px solid rgb(20 20 20 / 8%);
     }
-
-    .nav-cta {
-      display: inline-flex;
-      width: 100%;
-      margin-top: 16px;
-      min-height: 46px;
-    }
   }
 
   @keyframes nav-drop {
@@ -587,8 +574,25 @@ const currentPath = Astro.url.pathname;
     to   { opacity: 1; transform: translateY(0); }
   }
 
-  @media (max-width: 380px) {
+  @media (max-width: 480px) {
+    .header-inner { padding: 8px 12px; gap: 8px; }
+    .header-actions { gap: 6px; }
+    .brand { gap: 8px; }
+    .brand-logo { width: 36px; height: 36px; }
+    .brand-wordmark { font-size: 18px; }
     .brand-tag { display: none; }
+    .search-button-capsule,
+    .menu-toggle { width: 36px; min-height: 36px; height: 36px; }
+    .try-button {
+      min-height: 36px;
+      padding: 0 12px;
+      font-size: 13px;
+    }
+    .try-button .outbound-icon { display: none; }
+  }
+
+  @media (max-width: 360px) {
+    .try-long { display: none; }
   }
 </style>
 
