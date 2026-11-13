@@ -1,87 +1,113 @@
 ---
-// Footer links match the header navigation (GST, Income Tax, Insights, Join Us).
-const footerLinks = [
-  { label: "GST", href: "/gst/" },
-  { label: "Income Tax", href: "/income-tax/" },
-  { label: "Insights", href: "/insights/" },
-  { label: "Join Us", href: "/join/" },
-  { label: "Try Acomptic", href: "https://acomptic.com" },
+const linkGroups = [
+  {
+    label: "Product",
+    links: [
+      { label: "Features", href: "/features/" },
+      { label: "Experience", href: "/experience/" },
+      { label: "Articles", href: "https://articles.acomptic.com/" },
+      { label: "Download", href: "/download/" },
+    ],
+  },
+  {
+    label: "Company",
+    links: [
+      { label: "About", href: "/about/" },
+      { label: "Contact", href: "/contact/" },
+    ],
+  },
+  {
+    label: "Legal",
+    links: [
+      { label: "Privacy Policy", href: "/privacy/" },
+      { label: "Terms & Conditions", href: "/terms/" },
+      { label: "Refund Policy", href: "/refund/" },
+    ],
+  },
 ];
 
 const socialLinks = [
-  {
-    label: "LinkedIn",
-    href: "https://linkedin.com/company/acomptic",
-    icon: "linkedin",
-  },
-  {
-    label: "X",
-    href: "https://x.com/acomptic",
-    icon: "x",
-  },
-  {
-    label: "Instagram",
-    href: "https://instagram.com/acomptic",
-    icon: "instagram",
-  },
-  {
-    label: "YouTube",
-    href: "https://youtube.com/@acomptic",
-    icon: "youtube",
-  },
-  {
-    label: "Reddit",
-    href: "https://www.reddit.com/user/acomptic/",
-    icon: "reddit",
-  },
+  { label: "LinkedIn", href: "https://linkedin.com/company/acomptic", icon: "linkedin" },
+  { label: "X", href: "https://x.com/acomptic", icon: "x" },
+  { label: "Instagram", href: "https://instagram.com/acomptic", icon: "instagram" },
+  { label: "YouTube", href: "https://youtube.com/@acomptic", icon: "youtube" },
+  { label: "Reddit", href: "https://www.reddit.com/user/acomptic/", icon: "reddit" },
 ];
-
-const isExternal = (href: string) => href.startsWith("http");
 ---
 
 <footer class="site-footer">
-  <div class="footer-inner container">
-    <nav class="footer-nav" aria-label="Footer navigation">
-      {footerLinks.map((link) => (
-        <a
-          class="footer-link"
-          href={link.href}
-          target={isExternal(link.href) ? "_blank" : undefined}
-          rel={isExternal(link.href) ? "noopener noreferrer" : undefined}
-        >
-          {link.label}
+  <div class="container footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <a class="footer-logo" href="/" aria-label="Acomptic home">
+          <img
+            src="/logo.svg"
+            width="28"
+            height="28"
+            loading="lazy"
+            decoding="async"
+            alt=""
+            aria-hidden="true"
+          />
+          <span>Acomptic</span>
         </a>
-      ))}
-    </nav>
+        <p class="footer-tagline">
+          Offline GST billing and accounting software for businesses in India.
+        </p>
 
-    <div class="footer-right-col">
-      <nav class="social-nav" aria-label="Social media">
-        {socialLinks.map((social) => (
-          <a
-            class="social-link"
-            href={social.href}
-            aria-label={`Acomptic on ${social.label}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <img
-              class="social-brand-image"
-              src={`/icons/social/${social.icon}.svg`}
-              alt=""
-              aria-hidden="true"
-              width="20"
-              height="20"
-              loading="lazy"
-              decoding="async"
-            />
-          </a>
-        ))}
+        <nav class="social-nav" aria-label="Social media">
+          {
+            socialLinks.map((social) => (
+              <a
+                class="social-link"
+                href={social.href}
+                aria-label={social.label}
+                target="_blank"
+                rel="me noopener noreferrer"
+              >
+                <img
+                  src={`/icons/social/${social.icon}.svg`}
+                  alt=""
+                  aria-hidden="true"
+                  width="20"
+                  height="20"
+                  loading="lazy"
+                />
+              </a>
+            ))
+          }
+        </nav>
+      </div>
+
+      <nav class="footer-groups" aria-label="Footer navigation">
+        {
+          linkGroups.map((group) => (
+            <div class="footer-group">
+              <h2>{group.label}</h2>
+              <ul>
+                {group.links.map((link) => (
+                  <li>
+                    <a class="footer-link" href={link.href}>
+                      {link.label}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
       </nav>
-      <div class="made-in-india">
-        <span>Made with</span>
+    </div>
+
+    <div class="footer-bottom">
+      <span class="copyright">
+        © <span class="num">{new Date().getFullYear()}</span> Acomptic. All rights reserved.
+      </span>
+
+      <span class="made-in-india">
+        Made with
         <svg
           class="heart-icon"
-          xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
           width="16"
           height="16"
@@ -90,77 +116,68 @@ const isExternal = (href: string) => href.startsWith("http");
           <path
             fill="currentColor"
             d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-          />
+          ></path>
         </svg>
-        <span>in India</span>
-      </div>
+        in India
+      </span>
     </div>
-
-    <span class="copyright">
-      © {new Date().getFullYear()} Acomptic. All rights reserved.
-    </span>
   </div>
 </footer>
 
 <style>
   .site-footer {
     width: 100%;
-    background: var(--color-white, #ffffff);
-    border-top: 1px solid rgb(18 18 18 / 6%);
+    background: var(--color-white);
+    border-top: 1px solid var(--color-border-soft);
   }
 
-  /* Desktop: links and copyright left, social icons right */
   .footer-inner {
-    min-height: 112px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "links right-col"
-      "copyright right-col";
-    align-items: start;
-    column-gap: 28px;
-    row-gap: 14px;
-    padding-block: 28px;
+    padding-top: var(--space-5);
+    padding-bottom: var(--space-4);
   }
 
-  .footer-nav {
-    grid-area: links;
+  .footer-top {
     display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--space-5);
+    padding-bottom: var(--space-5);
+  }
+
+  /* Brand column */
+
+  .footer-brand {
+    max-width: 320px;
+  }
+
+  .footer-logo {
+    display: inline-flex;
     align-items: center;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    min-width: 0;
-    gap: 12px 24px;
-  }
-
-  .footer-link {
-    color: #121212;
-    font-family: var(--font-primary);
-    font-size: 15px;
-    font-weight: 400;
-    line-height: 1.5;
+    gap: 10px;
+    color: var(--color-text);
+    font-size: var(--fs-lead);
+    font-weight: 600;
+    letter-spacing: -0.01em;
     text-decoration: none;
-    transition: color var(--transition-fast, 200ms ease);
   }
 
-  .footer-link:hover {
-    color: var(--color-primary, #7654d6);
+  .footer-logo img {
+    width: 28px;
+    height: 28px;
   }
 
-  .footer-right-col {
-    grid-area: right-col;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 12px;
+  .footer-tagline {
+    margin: var(--space-2) 0 var(--space-3);
+    color: var(--color-purple-muted);
+    font-size: 1rem;
+    line-height: 1.618;
   }
 
   .social-nav {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    flex-shrink: 0;
-    gap: 18px;
+    gap: var(--space-1);
+    margin-left: -8px;
   }
 
   .social-link {
@@ -169,193 +186,144 @@ const isExternal = (href: string) => href.startsWith("http");
     justify-content: center;
     width: 36px;
     height: 36px;
-    flex: 0 0 36px;
-    color: #121212;
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    text-decoration: none;
+    border-radius: 50%;
+    opacity: 0.75;
     -webkit-tap-highlight-color: transparent;
-    transition: color var(--transition-fast, 200ms ease);
+    transition:
+      opacity var(--transition-fast),
+      background-color var(--transition-fast);
   }
 
-  .social-link:hover {
-    color: var(--color-primary, #7654d6);
-    background: transparent;
+  .social-link:hover,
+  .social-link:focus-visible {
+    background: var(--color-lavender-light);
+    opacity: 1;
   }
 
-  /* Official brand marks, rendered at one consistent size. */
-  .social-link .social-brand-image {
+  .social-link img {
     display: block;
     width: 20px;
     height: 20px;
-    min-width: 20px;
-    min-height: 20px;
-    flex: 0 0 20px;
     object-fit: contain;
   }
 
-  .made-in-india {
+  /* Link columns */
+
+  .footer-groups {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(130px, auto));
+    gap: var(--space-5);
+  }
+
+  .footer-group h2 {
+    margin: 0 0 var(--space-2);
+    font-size: var(--fs-caption);
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-purple-muted);
+  }
+
+  .footer-group ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .footer-group li + li {
+    margin-top: 10px;
+  }
+
+  .footer-link {
+    color: var(--color-text);
+    font-size: 15px;
+    line-height: 1.5;
+    text-decoration: none;
+    transition: color var(--transition-fast);
+  }
+
+  .footer-link:hover {
+    color: var(--color-purple-muted);
+  }
+
+  /* Bottom bar */
+
+  .footer-bottom {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border-soft);
+    color: var(--color-purple-muted);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  .made-in-india {
+    display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: #121212;
-    font-family: var(--font-primary);
-    font-size: 14px;
-    font-weight: 400;
-    line-height: 1.5;
   }
 
   .heart-icon {
-    color: var(--color-error, #e53935);
     flex-shrink: 0;
+    color: var(--color-red);
   }
 
-  .copyright {
-    grid-area: copyright;
-    color: #121212;
-    font-family: var(--font-primary);
-    font-size: 14px;
-    font-weight: 400;
-    line-height: 1.5;
-    text-align: left;
-    align-self: center;
-  }
-
-  /* Keyboard accessibility */
   .footer-link:focus-visible,
-  .social-link:focus-visible {
-    outline: 2px solid var(--color-primary, #7654d6);
-    outline-offset: 4px;
+  .social-link:focus-visible,
+  .footer-logo:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 3px;
   }
 
   /* Tablet */
-  @media (max-width: 1000px) {
-    .footer-inner {
-      column-gap: 20px;
+
+  @media (max-width: 860px) {
+    .footer-top {
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-4);
+      text-align: center;
     }
 
-    .footer-nav {
-      gap: 12px 20px;
-    }
-
-    .social-nav {
-      gap: 12px;
-    }
-  }
-
-  /* Mobile: links first, social/made-in-india second, copyright last */
-  @media (max-width: 760px) {
-    .footer-inner.container {
+    .footer-brand {
       display: flex;
       flex-direction: column;
-      align-items: center !important;
-      justify-content: center;
-      gap: 20px;
-      width: 100%;
-      text-align: center !important;
-      padding-block: 30px;
-    }
-
-    .footer-nav {
-      display: flex;
-      width: 100%;
-      justify-content: center !important;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 6px 22px;
-      margin: 0 auto;
-      text-align: center !important;
-    }
-
-    /* Larger tap area for links */
-    .footer-link {
-      padding-block: 8px;
-    }
-
-    .footer-right-col {
-      width: 100%;
-      align-items: center;
-      gap: 12px;
     }
 
     .social-nav {
-      display: flex;
-      width: 100%;
-      justify-content: center !important;
-      align-self: center;
-      gap: 8px;
-      margin: 0 auto !important;
+      margin-left: 0;
     }
 
-    /* Larger tap area for social icons */
-    .social-link {
-      width: 44px;
-      height: 44px;
-      flex-basis: 44px;
-    }
-
-    .made-in-india {
+    .footer-groups {
       justify-content: center;
-    }
-
-    .copyright {
-      display: block;
-      width: 100%;
-      align-self: center;
-      margin: 0 auto !important;
-      text-align: center !important;
+      gap: var(--space-4);
     }
   }
 
-  /* Small phones */
-  @media (max-width: 480px) {
-    .footer-inner.container {
-      gap: 18px;
-      padding-block: 26px;
+  /* Phones: one centred column */
+
+  @media (max-width: 560px) {
+    .footer-inner {
+      padding-top: var(--space-4);
     }
 
-    .footer-nav {
-      gap: 4px 18px;
+    .footer-groups {
+      grid-template-columns: 1fr;
+      gap: var(--space-3);
     }
 
-    .footer-link {
-      font-size: 14px;
-    }
-
-    .social-nav {
-      gap: 4px;
-    }
-
-    .made-in-india,
-    .copyright {
-      font-size: 13px;
+    .footer-bottom {
+      flex-direction: column;
+      justify-content: center;
+      text-align: center;
     }
   }
 
-  /* Extra-small phones */
-  @media (max-width: 360px) {
-    .footer-nav {
-      gap: 4px 14px;
-    }
-
-    .footer-link {
-      font-size: 13px;
-    }
-
-    .made-in-india,
-    .copyright {
-      font-size: 12px;
-    }
-
-    .social-link {
-      width: 40px;
-      height: 40px;
-      flex-basis: 40px;
-    }
-  }
-
-  /* Reduced motion */
   @media (prefers-reduced-motion: reduce) {
     .footer-link,
     .social-link {
